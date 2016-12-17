@@ -18,7 +18,7 @@ var canvas;
 var context;
 var coord;     /* coordinate/pixel ratio */
 var tick = 10; /* milliseconds between two consecutive frames */
-var timer;     /* reference to update timer */
+var timer = 0; /* reference to update timer */
 
 var mousex = 0, mousey = 0;
 
@@ -67,6 +67,18 @@ function update() {
     timer = setTimeout(update, tick);
 }
 
+/* pause and continue */
+function pause() {
+    if (timer == 0) {
+        /* continue */
+        update();
+    } else {
+        /* pause */
+        window.clearTimeout(timer);
+        timer = 0;
+    }
+}
+
 function mousemove(event) {
     /* save mouse coordinates */
     mousex = event.clientX;
@@ -108,4 +120,5 @@ function init() {
 window.onload = init;
 window.onresize = resize;
 window.onmousemove = mousemove;
+window.onclick = pause;
 </script>
