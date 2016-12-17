@@ -30,8 +30,8 @@ var circle = {
     angles: []
 };
 
-var lines = [{ x1:  -5, y1: -1, x2: 5,  y2:  1 },
-             { x1:   5, y1:  1, x2: 0, y2: -3 },
+var lines = [{ x1:  -5, y1: -1, x2:  5, y2:  1 },
+             { x1:   5, y1:  1, x2:  0, y2: -3 },
              { x1: -10, y1: -5, x2: -5, y2: -1 }
             ];
 
@@ -81,7 +81,7 @@ function draw() {
     context.restore();
 }
 
-function dist(x1, y1, x2, y2) {
+function distance(x1, y1, x2, y2) {
     var distx = x1 - x2;
     var disty = y1 - y2;
     var dist2 = (distx * distx) + (disty * disty);
@@ -104,7 +104,7 @@ function direction(x1, y1, x2, y2, x3, y3) {
 
 /* get the length of the part of the force (x1, y1) that is parallel to angle */
 function parallel(x1, y1, angle) {
-    var len = dist(0, 0, x1, y1);
+    var len = distance(0, 0, x1, y1);
     var angle1 = Math.atan2(y1, x1);
     var angledist = angle1 - angle;
     return len * Math.cos(angledist);
@@ -112,7 +112,7 @@ function parallel(x1, y1, angle) {
 
 /* get the length of the part of the force (x1, y1) that is perpendicular to angle */
 function perpendicular(x1, y1, angle) {
-    var len = dist(0, 0, x1, y1);
+    var len = distance(0, 0, x1, y1);
     var angle1 = Math.atan2(y1, x1);
     var angledist = angle1 - angle;
     return len * Math.sin(angledist);
@@ -127,16 +127,8 @@ function angledistance(angle1, angle2) {
 }
 
 
-/* does the circle touch the line? */
-function collision(circle, line) {
-    /* endpoint 1 */
-    var dist1 = dist(circle.x, circle.y, line.x1, line.y1);
-    if (dist1 < circle.r) return true;
-    
-    /* endpoint 2 */
-    var dist2 = dist(circle.x, circle.y, line.x2, line.y2);
-    if (dist2 < circle.r) return true;
-    
+/* does the circle touch the side of the line? */
+function sidecollision(circle, line) {
     /* line */
     var distx = line.x1 - line.x2;
     var disty = line.y1 - line.y2;
@@ -161,6 +153,16 @@ function collision(circle, line) {
     return false;
 }
 
+/* push only angles that are not opposite to circle.angle */
+function pushangle(circle, angle) {
+    if (circle.angles.indexOf(angle) != -1) {
+        /* no duplicates */
+        return;
+    }
+    var dist = angledistance(angle, circle.angle);
+    if (Math.cos(dist) > 0) circle.angles.push(angle);
+}
+
 function update() {
     /* face towards mouse */
     var distx = mousex - circle.x;
@@ -181,28 +183,43 @@ function update() {
     circle.y += addy;
     
     /* check for collisions */
-    var angles = []; /* collision angles */
+    circle.angles = []; /* collision angles */
     var i;
     for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
-        line.touch = collision(circle, line);
+        /* side collision */
+        line.touch = sidecollision(circle, line);
         if (line.touch) {
             /* get line angle */
             var angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
             /* swap angle if the circle on the other side */
             var dir = direction(line.x1, line.y1, line.x2, line.y2, circle.x, circle.y);
-            if (dir) angles.push(angle - Math.PI / 2);
-            else     angles.push(angle + Math.PI / 2);
+            if (dir) pushangle(circle, angle - Math.PI / 2);
+            else     pushangle(circle, angle + Math.PI / 2);
+        } else {
+            /* point collisions */
+            /* point 1 */
+            var dist1 = distance(circle.x, circle.y, line.x1, line.y1);
+            if (dist1 < circle.r) {
+                line.touch = true;
+                var angle = Math.atan2(line.y1 - circle.y, line.x1 - circle.x);
+                pushangle(circle, angle);
+            }
+            /* point 2 */
+            var dist2 = distance(circle.x, circle.y, line.x2, line.y2);
+            if (dist2 < circle.r) {
+                line.touch = true;
+                var angle = Math.atan2(line.y2 - circle.y, line.x2 - circle.x);
+                pushangle(circle, angle);
+            }
         }
     }
     
-    circle.angles = angles;
-    
-    if (angles.length == 0) {
+    if (circle.angles.length == 0) {
         /* no changes */
-    } else if (angles.length == 1) {
+    } else if (circle.angles.length == 1) {
         /* move parallel to angle */
-        var angle = angles[0] + Math.PI / 2;
+        var angle = circle.angles[0] + Math.PI / 2;
         var length = parallel(addx, addy, angle);
         addx = length * Math.cos(angle);
         addy = length * Math.sin(angle);
@@ -211,8 +228,8 @@ function update() {
         var left, right;
         var minleftd, minrightd; /* left and right distance */
         var i;
-        for (i = 0; i < angles.length; ++i) {
-            var anglei = angles[i];
+        for (i = 0; i < circle.angles.length; ++i) {
+            var anglei = circle.angles[i];
             leftd = angledistance(anglei, circle.angle);
             rightd = angledistance(circle.angle, anglei);
             
