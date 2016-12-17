@@ -23,7 +23,7 @@ var timer = 0; /* reference to update timer */
 var mousex = 0, mousey = 0;
 
 var circle = {
-    x: 0, y: 0,
+    x: 0, y: 5,
     r: 1,
     fx: 0, fy: 0, /* move force */
     speed: 5      /* coords per second */
@@ -125,12 +125,6 @@ function collision(circle, line) {
 }
 
 function update() {
-    /* collision */
-    var i;
-    for (i = 0; i < lines.length; ++i) {
-        lines[i].touch = collision(circle, lines[i]);
-    }
-
     /* face towards mouse */
     var distx = mousex - circle.x;
     var disty = mousey - circle.y;
@@ -139,9 +133,27 @@ function update() {
     circle.fx = circle.speed * Math.cos(angle);
     circle.fy = circle.speed * Math.sin(angle);
     
+    var oldx = circle.x;
+    var oldy = circle.y;
+    
     /* move */
     circle.x += circle.fx * (tick / 1000);
     circle.y += circle.fy * (tick / 1000);
+    
+    /* check for collisions */
+    var collisions = false;
+    var i;
+    for (i = 0; i < lines.length; ++i) {
+        var line = lines[i];
+        line.touch = collision(circle, line);
+        if (line.touch) collisions = true;
+    }
+    
+    if (collisions) {
+        /* move back */
+        circle.x = oldx;
+        circle.y = oldy;
+    }
 
     draw();
 
