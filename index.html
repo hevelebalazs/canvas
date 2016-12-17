@@ -90,6 +90,14 @@ function direction(x1, y1, x2, y2, x3, y3) {
     return (det > 0);
 }
 
+/* get the length of the part of the force (x1, y1) that is parallel to angle */
+function parallel(x1, y1, angle) {
+    var len = dist(0, 0, x1, y1);
+    var angle1 = Math.atan2(y1, x1);
+    var angledist = angle1 - angle;
+    return len * Math.cos(angledist);
+}
+
 /* does the circle touch the line? */
 function collision(circle, line) {
     /* endpoint 1 */
@@ -137,23 +145,33 @@ function update() {
     var oldy = circle.y;
     
     /* move */
-    circle.x += circle.fx * (tick / 1000);
-    circle.y += circle.fy * (tick / 1000);
+    var addx = circle.fx * (tick / 1000);
+    var addy = circle.fy * (tick / 1000);
+    
+    circle.x += addx;
+    circle.y += addy;
     
     /* check for collisions */
-    var collisions = false;
     var i;
     for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
         line.touch = collision(circle, line);
-        if (line.touch) collisions = true;
+        if (line.touch) {
+            /* get line angle */
+            var angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+            /* calculate parallel force */
+            var length = parallel(addx, addy, angle);
+            addx = length * Math.cos(angle);
+            addy = length * Math.sin(angle);
+        }
     }
     
-    if (collisions) {
-        /* move back */
-        circle.x = oldx;
-        circle.y = oldy;
-    }
+    /* move back */
+    circle.x = oldx;
+    circle.y = oldy;
+    /* move forward */
+    circle.x += addx;
+    circle.y += addy;
 
     draw();
 
