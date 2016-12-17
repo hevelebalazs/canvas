@@ -16,25 +16,48 @@ canvas#canvas {
 <script>
 var canvas;
 var context;
+var coord; /* coordinate/pixel ratio */
 
 function draw() {
     /* fill canvas */
     context.fillStyle = "#FFFFCC";
     context.rect(0, 0, canvas.width, canvas.height);
     context.fill();
+    
+    /* init transformations */
+    context.translate(canvas.width / 2, canvas.height / 2);
+    context.scale(coord, coord);
+    
+    /* draw circle */
+    context.fillStyle = "#FF0000";
+    context.beginPath();
+    context.arc(0, 0, 1, 0, 2 * Math.PI);
+    context.fill();
 }
 
 /* window resize */
 function resize() {
+    /* resize canvas */
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
+    
+    /* calculate coord ratio */
+    var minsize;
+    if (canvas.width < canvas.height) {
+        minsize = canvas.width;
+    } else {
+        minsize = canvas.height;
+    }
+    coord = minsize / 20;
+    
     draw();
 }
 
 function init() {
     canvas = document.getElementById("canvas");
     context = canvas.getContext("2d");
-    /* init canvas coordonates */
+    
+    /* init canvas coordinates */
     resize();
 }
 
