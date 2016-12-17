@@ -16,7 +16,18 @@ canvas#canvas {
 <script>
 var canvas;
 var context;
-var coord; /* coordinate/pixel ratio */
+var coord;     /* coordinate/pixel ratio */
+var tick = 10; /* milliseconds between two consecutive frames */
+var timer;     /* reference to update timer */
+
+var mousex = 0, mousey = 0;
+
+var circle = {
+    x: 0, y: 0,
+    r: 1,
+    fx: 0, fy: 0, /* move force */
+    speed: 5      /* coords per second */
+};
 
 function draw() {
     /* fill canvas */
@@ -25,14 +36,45 @@ function draw() {
     context.fill();
     
     /* init transformations */
+    context.save();
     context.translate(canvas.width / 2, canvas.height / 2);
     context.scale(coord, coord);
     
     /* draw circle */
     context.fillStyle = "#FF0000";
     context.beginPath();
-    context.arc(0, 0, 1, 0, 2 * Math.PI);
+    context.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
     context.fill();
+    
+    context.restore();
+}
+
+function update() {
+    /* face towards mouse */
+    var distx = mousex - circle.x;
+    var disty = mousey - circle.y;
+    var angle = Math.atan2(disty, distx);
+    
+    circle.fx = circle.speed * Math.cos(angle);
+    circle.fy = circle.speed * Math.sin(angle);
+    
+    /* move */
+    circle.x += circle.fx * (tick / 1000);
+    circle.y += circle.fy * (tick / 1000);
+
+    draw();
+
+    timer = setTimeout(update, tick);
+}
+
+function mousemove(event) {
+    /* save mouse coordinates */
+    mousex = event.clientX;
+    mousey = event.clientY;
+    
+    /* transform from pixel to coordinates */
+    mousex = (mousex - canvas.width / 2) / coord;
+    mousey = (mousey - canvas.height / 2) / coord;
 }
 
 /* window resize */
@@ -59,8 +101,11 @@ function init() {
     
     /* init canvas coordinates */
     resize();
+    
+    update();
 }
 
 window.onload = init;
 window.onresize = resize;
+window.onmousemove = mousemove;
 </script>
