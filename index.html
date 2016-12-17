@@ -30,7 +30,8 @@ var circle = {
     angles: []
 };
 
-var lines = [{ x1: -5, y1: -1, x2: 5,  y2: 1  },
+var lines = [{ x1:  -5, y1: -1, x2: 5,  y2:  1 },
+             { x1:   5, y1:  1, x2: 0, y2: -3 },
              { x1: -10, y1: -5, x2: -5, y2: -1 }
             ];
 
@@ -117,6 +118,14 @@ function perpendicular(x1, y1, angle) {
     return len * Math.sin(angledist);
 }
 
+/* get the distance of two angles between 0 and 2 * Math.PI */
+function angledistance(angle1, angle2) {
+    var dist = angle2 - angle1;
+    while (dist < 0) dist += 2 * Math.PI;
+    while (dist > 2 * Math.PI) dist -= 2 * Math.PI;
+    return dist;
+}
+
 
 /* does the circle touch the line? */
 function collision(circle, line) {
@@ -156,10 +165,10 @@ function update() {
     /* face towards mouse */
     var distx = mousex - circle.x;
     var disty = mousey - circle.y;
-    var angle = Math.atan2(disty, distx);
+    circle.angle = Math.atan2(disty, distx);
     
-    circle.fx = circle.speed * Math.cos(angle);
-    circle.fy = circle.speed * Math.sin(angle);
+    circle.fx = circle.speed * Math.cos(circle.angle);
+    circle.fy = circle.speed * Math.sin(circle.angle);
     
     var oldx = circle.x;
     var oldy = circle.y;
@@ -193,10 +202,44 @@ function update() {
         /* no changes */
     } else if (angles.length == 1) {
         /* move parallel to angle */
-        var angles = angles[0] + Math.PI / 2;
+        var angle = angles[0] + Math.PI / 2;
         var length = parallel(addx, addy, angle);
         addx = length * Math.cos(angle);
         addy = length * Math.sin(angle);
+    } else {
+        /* get left and right */
+        var left, right;
+        var minleftd, minrightd; /* left and right distance */
+        var i;
+        for (i = 0; i < angles.length; ++i) {
+            var anglei = angles[i];
+            leftd = angledistance(anglei, circle.angle);
+            rightd = angledistance(circle.angle, anglei);
+            
+            if (i == 0 || leftd < minleftd) {
+                minleftd = leftd;
+                left = anglei;
+            }
+            if (i == 0 || rightd < minrightd) {
+                minrightd = rightd;
+                right = anglei;
+            }
+        }
+        var dist = angledistance(left, right);
+        if (dist < Math.PI) {
+            /* no movement */
+            addx = 0;
+            addy = 0;
+        } else {
+            var closest;
+            if (minleftd < minrightd) closest = left;
+            else closest = right;
+            closest -= Math.PI / 2;
+            /* calculate parallel force */
+            var length = parallel(addx, addy, closest);
+            addx = length * Math.cos(closest);
+            addy = length * Math.sin(closest);
+        }
     }
     
     /* move back */
