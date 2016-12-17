@@ -29,11 +29,10 @@ var circle = {
     speed: 5      /* coords per second */
 };
 
-var line = {
-    x1: -5, y1: -1,
-    x2:  5, y2: 1,
-    touch: false    /* does the circle touch this line? */
-}
+var lines = [{ x1: -5, y1: -1, x2: 5,  y2: 1  },
+             { x1:  5, y1:  1, x2: 10, y2: -5 },
+             { x1: 10, y1: -5, x2: -5, y2: -1 }
+            ];
 
 function draw() {
     /* fill canvas */
@@ -52,17 +51,20 @@ function draw() {
     context.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
     context.fill();
     
-    /* draw line */
-    if (line.touch) {
-        context.strokeStyle = "#FF0000";
-    } else {
-        context.strokeStyle = "#000000";
+    /* draw lines */
+    var i;
+    for (i = 0; i < lines.length; ++i) {
+        var line = lines[i];
+        
+        if (line.touch) context.strokeStyle = "#FF0000";
+        else context.strokeStyle = "#000000";
+        
+        context.beginPath();
+        context.lineWidth = 2 / coord;
+        context.moveTo(line.x1, line.y1);
+        context.lineTo(line.x2, line.y2);
+        context.stroke();
     }
-    context.beginPath();
-    context.lineWidth = 2 / coord;
-    context.moveTo(line.x1, line.y1);
-    context.lineTo(line.x2, line.y2);
-    context.stroke();
     
     context.restore();
 }
@@ -89,7 +91,7 @@ function direction(x1, y1, x2, y2, x3, y3) {
 }
 
 /* does the circle touch the line? */
-function collision() {
+function collision(circle, line) {
     /* endpoint 1 */
     var dist1 = dist(circle.x, circle.y, line.x1, line.y1);
     if (dist1 < circle.r) return true;
@@ -124,7 +126,10 @@ function collision() {
 
 function update() {
     /* collision */
-    line.touch = collision();
+    var i;
+    for (i = 0; i < lines.length; ++i) {
+        lines[i].touch = collision(circle, lines[i]);
+    }
 
     /* face towards mouse */
     var distx = mousex - circle.x;
