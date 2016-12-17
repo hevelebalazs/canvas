@@ -26,12 +26,12 @@ var circle = {
     x: 0, y: 5,
     r: 1,
     fx: 0, fy: 0, /* move force */
-    speed: 5      /* coords per second */
+    speed: 5,     /* coords per second */
+    angles: []
 };
 
 var lines = [{ x1: -5, y1: -1, x2: 5,  y2: 1  },
-             { x1:  5, y1:  1, x2: 10, y2: -5 },
-             { x1: 10, y1: -5, x2: -5, y2: -1 }
+             { x1: -10, y1: -5, x2: -5, y2: -1 }
             ];
 
 function draw() {
@@ -51,8 +51,19 @@ function draw() {
     context.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
     context.fill();
     
-    /* draw lines */
+    /* draw small circles */
+    context.fillStyle = "#853A00";
     var i;
+    for (i = 0; i < circle.angles.length; ++i) {
+        var angle = circle.angles[i];
+        var x = circle.x + circle.r * Math.cos(angle);
+        var y = circle.y + circle.r * Math.sin(angle);
+        context.beginPath();
+        context.arc(x, y, circle.r / 3, 0, 2 * Math.PI);
+        context.fill();
+    }
+    
+    /* draw lines */
     for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
         
@@ -97,6 +108,15 @@ function parallel(x1, y1, angle) {
     var angledist = angle1 - angle;
     return len * Math.cos(angledist);
 }
+
+/* get the length of the part of the force (x1, y1) that is perpendicular to angle */
+function perpendicular(x1, y1, angle) {
+    var len = dist(0, 0, x1, y1);
+    var angle1 = Math.atan2(y1, x1);
+    var angledist = angle1 - angle;
+    return len * Math.sin(angledist);
+}
+
 
 /* does the circle touch the line? */
 function collision(circle, line) {
@@ -152,6 +172,7 @@ function update() {
     circle.y += addy;
     
     /* check for collisions */
+    var angles = []; /* collision angles */
     var i;
     for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
@@ -159,11 +180,23 @@ function update() {
         if (line.touch) {
             /* get line angle */
             var angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
-            /* calculate parallel force */
-            var length = parallel(addx, addy, angle);
-            addx = length * Math.cos(angle);
-            addy = length * Math.sin(angle);
+            /* swap angle if the circle on the other side */
+            var dir = direction(line.x1, line.y1, line.x2, line.y2, circle.x, circle.y);
+            if (dir) angles.push(angle - Math.PI / 2);
+            else     angles.push(angle + Math.PI / 2);
         }
+    }
+    
+    circle.angles = angles;
+    
+    if (angles.length == 0) {
+        /* no changes */
+    } else if (angles.length == 1) {
+        /* move parallel to angle */
+        var angles = angles[0] + Math.PI / 2;
+        var length = parallel(addx, addy, angle);
+        addx = length * Math.cos(angle);
+        addy = length * Math.sin(angle);
     }
     
     /* move back */
