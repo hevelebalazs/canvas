@@ -29,6 +29,12 @@ var circle = {
     speed: 5      /* coords per second */
 };
 
+var line = {
+    x1: -5, y1: -1,
+    x2:  5, y2: 1,
+    touch: false    /* does the circle touch this line? */
+}
+
 function draw() {
     /* fill canvas */
     context.fillStyle = "#FFFFCC";
@@ -41,15 +47,85 @@ function draw() {
     context.scale(coord, coord);
     
     /* draw circle */
-    context.fillStyle = "#FF0000";
+    context.fillStyle = "#964B00";
     context.beginPath();
     context.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
     context.fill();
     
+    /* draw line */
+    if (line.touch) {
+        context.strokeStyle = "#FF0000";
+    } else {
+        context.strokeStyle = "#000000";
+    }
+    context.beginPath();
+    context.lineWidth = 2 / coord;
+    context.moveTo(line.x1, line.y1);
+    context.lineTo(line.x2, line.y2);
+    context.stroke();
+    
     context.restore();
 }
 
+function dist(x1, y1, x2, y2) {
+    var distx = x1 - x2;
+    var disty = y1 - y2;
+    var dist2 = (distx * distx) + (disty * disty);
+    return Math.sqrt(dist2);
+}
+
+/* does (x2, y2) -> (x3, y3) turn right to (x1, y1) -> (x2, y2)? */
+function direction(x1, y1, x2, y2, x3, y3) {
+    var dx1 = x2 - x1;
+    var dy1 = y2 - y1;
+    var dx2 = x3 - x2;
+    var dy2 = y3 - y2;
+    /* calculate
+        | dx1 dx2 | 
+        | dy1 dy2 |
+    */
+    var det = dx1 * dy2 - dx2 * dy1;
+    return (det > 0);
+}
+
+/* does the circle touch the line? */
+function collision() {
+    /* endpoint 1 */
+    var dist1 = dist(circle.x, circle.y, line.x1, line.y1);
+    if (dist1 < circle.r) return true;
+    
+    /* endpoint 2 */
+    var dist2 = dist(circle.x, circle.y, line.x2, line.y2);
+    if (dist2 < circle.r) return true;
+    
+    /* line */
+    var distx = line.x1 - line.x2;
+    var disty = line.y1 - line.y2;
+    var angle = Math.atan2(disty, distx);
+    /* point 1 */
+    var angle1 = angle + Math.PI / 2;
+    var x1 = circle.x + circle.r * Math.cos(angle1);
+    var y1 = circle.y + circle.r * Math.sin(angle1);
+    /* point 2 */
+    var angle2 = angle - Math.PI / 2;
+    var x2 = circle.x + circle.r * Math.cos(angle2);
+    var y2 = circle.y + circle.r * Math.sin(angle2);
+    
+    var dir1 = direction(x1, y1, x2, y2, line.x1, line.y1);
+    var dir2 = direction(x1, y1, x2, y2, line.x2, line.y2);
+    
+    var dir3 = direction(x1, y1, line.x1, line.y1, line.x2, line.y2);
+    var dir4 = direction(x2, y2, line.x1, line.y1, line.x2, line.y2);
+    
+    if (dir1 != dir2 && dir3 != dir4) return true;
+    
+    return false;
+}
+
 function update() {
+    /* collision */
+    line.touch = collision();
+
     /* face towards mouse */
     var distx = mousex - circle.x;
     var disty = mousey - circle.y;
