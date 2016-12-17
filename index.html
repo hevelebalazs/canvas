@@ -31,8 +31,8 @@ var circle = {
 };
 
 var lines = [{ x1:  -5, y1: -1, x2:  5, y2:  1 },
-             { x1:   5, y1:  1, x2:  0, y2: -3 },
-             { x1: -10, y1: -5, x2: -5, y2: -1 }
+             { x1:   5, y1: .5, x2:  0, y2: -3 },
+             { x1: -10, y1: -5, x2: -5, y2:  0 }
             ];
 
 function draw() {
@@ -159,8 +159,7 @@ function pushangle(circle, angle) {
         /* no duplicates */
         return;
     }
-    var dist = angledistance(angle, circle.angle);
-    if (Math.cos(dist) > 0) circle.angles.push(angle);
+    circle.angles.push(angle);
 }
 
 function update() {
@@ -214,6 +213,17 @@ function update() {
             }
         }
     }
+    
+    /* clear all angles if all oppose circle.angle */
+    var alloppose = true;
+    var i;
+    for (i = 0; i < circle.angles.length; ++i) {
+        var angle = circle.angles[i];
+        var dist = angledistance(angle, circle.angle);
+        if (Math.cos(dist) > 0) alloppose = false;
+    }
+    
+    if (alloppose) circle.angles = [];
     
     if (circle.angles.length == 0) {
         /* no changes */
