@@ -15,14 +15,14 @@ var circle = {
     x1: 0, y1: 0,        /* helper points */
     tox1: 0, toy1: 0,    /* helper points */
     hitx: 0, hity: 0,    /* first hit point */
-	line: -1, linei: -1, /* index of touching line */
+    line: -1, linei: -1, /* index of touching line */
 
 };
 
 var lines = [{ x1:  -5, y1: -1,  x2:  5, y2:  1 },
              { x1:   5, y1: .5,  x2:  0, y2: -3 },
              { x1: -10, y1: -5,  x2: -5, y2:  0 },
-			 { x1:  -5, y1:  5,  x2:  5, y2:  6 }
+             { x1:  -5, y1:  5,  x2:  5, y2:  6 }
             ];
 
 function draw() {
@@ -36,12 +36,12 @@ function draw() {
     context.translate(canvas.width / 2, canvas.height / 2);
     context.scale(coord, coord);
     
-	context.strokeStyle = "#cb8080";
-	context.lineWidth = 2 * circle.r;
-	context.beginPath();
-	context.moveTo(circle.x, circle.y);
-	context.lineTo(circle.hitx, circle.hity);
-	context.stroke();
+    context.strokeStyle = "#cb8080";
+    context.lineWidth = 2 * circle.r;
+    context.beginPath();
+    context.moveTo(circle.x, circle.y);
+    context.lineTo(circle.hitx, circle.hity);
+    context.stroke();
     
     /* draw circle */
     context.fillStyle = "#960000";
@@ -213,83 +213,6 @@ function parallel(x1, y1, angle) {
     return len * Math.cos(angledist);
 }
 
-/* init circle to move to (x, y) */
-function initto(circle, x, y) {
-    circle.tox = x;
-    circle.toy = y;
-    
-    if (x == 0 && y == 0) return;
-    
-    circle.angle = Math.atan2(circle.toy - circle.y, circle.tox - circle.x);
-    circle.length = distance(circle.x, circle.y, circle.tox, circle.toy);
-	
-	/* does it touch a line? */
-	if (circle.linei != -1) {
-		var line = lines[circle.linei];
-		/* get collision angle */
-		var lineangle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
-		var angle;
-		var dir = direction(line.x1, line.y1, line.x2, line.y2, circle.x, circle.y);
-		if (dir) angle = lineangle - Math.PI/2;
-		else angle = lineangle + Math.PI/2;
-		
-		/* does it oppose move angle? */
-		var dist = angledistance(circle.angle, angle);
-		if (Math.cos(dist) > 0) {
-			var length = parallel(x - circle.x, y - circle.y, lineangle);
-			
-			/* calculate maxlength */
-			var endx, endy;
-			if (length < 0) {
-				endx = line.x1;
-				endy = line.y1;
-			} else {
-				endx = line.x2;
-				endy = line.y2;
-			}
-			
-			if (length < 0) {
-				length = -length;
-				lineangle = lineangle + Math.PI;
-			}
-			
-			/* calculate intersection distance from end point */
-			var inx = circle.x + circle.r * Math.cos(angle);
-			var iny = circle.y + circle.r * Math.sin(angle);
-			
-			/* HELP */
-			circle.inx = inx;
-			circle.iny = iny;
-			/* /HELP */
-			
-			var dist = distance(inx, iny, endx, endy);
-			
-			if (dist < length) length = dist;
-			
-			/* update circle movement */
-			circle.angle = lineangle;
-			circle.length = length;
-			circle.tox = circle.x + length * Math.cos(lineangle);
-			circle.toy = circle.y + length * Math.sin(lineangle);
-		}
-	}
-    
-    /* helper points */
-    var angle = circle.angle + Math.PI / 2;
-    var dx = circle.r * Math.cos(angle);
-    var dy = circle.r * Math.sin(angle);
-    
-    circle.x1 = circle.x + dx;
-    circle.y1 = circle.y + dy;
-    circle.x2 = circle.x - dx;
-    circle.y2 = circle.y - dy;
-    
-    circle.tox1 = circle.tox + dx;
-    circle.toy1 = circle.toy + dy;
-    circle.tox2 = circle.tox - dx;
-    circle.toy2 = circle.toy - dy;
-}
-
 function trianglearea(x1, y1, x2, y2, x3, y3) {
     var s1 = distance(x1, y1, x2, y2);
     var s2 = distance(x2, y2, x3, y3);
@@ -444,25 +367,84 @@ function linedist(circle, line) {
     return dist;
 }
 
-function mousemove(event) {
-    /* save mouse coordinates */
-    mousex = event.clientX;
-    mousey = event.clientY;
+/* move circle to (x, y) or to first obstacle on its way */
+/* circle will not be moved, only hitx, hity, tox, toy, angle, length, line and line1 values set */
+function moveto(circle, x, y) {
+    /* init movement */
+    circle.tox = x;
+    circle.toy = y;
     
-    /* transform from pixel to coordinates */
-    mousex = (mousex - canvas.width / 2) / coord;
-    mousey = (mousey - canvas.height / 2) / coord;
+    if (x == circle.x && y == circle.y) return;
     
-    initto(circle, mousex, mousey);
+    circle.angle = Math.atan2(circle.toy - circle.y, circle.tox - circle.x);
+    circle.length = distance(circle.x, circle.y, circle.tox, circle.toy);
     
-    /* check line collisions */
-    var i;
-    for (i = 0; i < lines.length; ++i) {
-        var line = lines[i];
-        lines[i].touch = mcircleline(circle, line);
+    /* is it touching a line? */
+    if (circle.linei != -1) {
+        var line = lines[circle.linei];
+        /* get collision angle */
+        var lineangle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+        var angle;
+        var dir = direction(line.x1, line.y1, line.x2, line.y2, circle.x, circle.y);
+        if (dir) angle = lineangle - Math.PI / 2;
+        else angle = lineangle + Math.PI / 2;
+        
+        /* does it oppose move angle? */
+        var dist = angledistance(circle.angle, angle);
+        if (Math.cos(dist) > 0) {
+            /* if not, move along the line */
+            var length = parallel(x - circle.x, y - circle.y, lineangle);
+            
+            /* calculate maximum length */
+            var endx, endy;
+            if (length < 0) {
+                endx = line.x1;
+                endy = line.y1;
+            } else {
+                endx = line.x2;
+                endy = line.y2;
+            }
+            
+            if (length < 0) {
+                length = -length;
+                lineangle = lineangle + Math.PI;
+            }
+            
+            /* calculate intersection distance form end point */
+            var inx = circle.x + circle.r * Math.cos(angle);
+            var iny = circle.y + circle.r * Math.sin(angle);
+            
+            var dist = distance(inx, iny, endx, endy);
+            
+            if (dist < length) length = dist;
+            
+            /* update circle movement angle and distance  */
+            circle.angle = lineangle;
+            circle.length = length;
+            circle.tox = circle.x + length * Math.cos(lineangle);
+            circle.toy = circle.y + length * Math.sin(lineangle);
+        }
     }
     
+    /* calculate helper points */
+    var angle = circle.angle + Math.PI / 2;
+    var dx = circle.r * Math.cos(angle);
+    var dy = circle.r * Math.sin(angle);
+    
+    circle.x1 = circle.x + dx;
+    circle.y1 = circle.y + dy;
+    circle.x2 = circle.x - dx;
+    circle.y2 = circle.y - dy;
+    
+    circle.tox1 = circle.tox + dx;
+    circle.toy1 = circle.toy + dy;
+    circle.tox2 = circle.tox - dx;
+    circle.toy2 = circle.toy - dy;
+    
+    /* find closest obstacle */
     var mindist = circle.length;
+    
+    circle.line = -1;
     
     /* find first colliding point */
     /*for (i = 0; i < lines.length; ++i) {
@@ -475,34 +457,44 @@ function mousemove(event) {
         if (dist2 < mindist) mindist = dist2;
     }*/
     
-	var linei = -1;
     /* find first colliding line */
     for (i = 0; i < lines.length; ++i) {
-		if (i == circle.linei) {
-			/* skip touching line */
-			continue;
-		}
-		
+        if (i == circle.linei) {
+            /* skip touching line */
+            continue;
+        }
+        
         var line = lines[i];
         var dist = linedist(circle, line);
         
         if (dist < mindist) {
-			mindist = dist;
-			linei = i;
-		}
+            mindist = dist;
+            circle.line = i;
+        }
     }
-	
-	circle.line = linei;
     
     circle.hitx = circle.x + mindist * Math.cos(circle.angle);
     circle.hity = circle.y + mindist * Math.sin(circle.angle);
 }
 
+
+function mousemove(event) {
+    /* save mouse coordinates */
+    mousex = event.clientX;
+    mousey = event.clientY;
+    
+    /* transform from pixel to coordinates */
+    mousex = (mousex - canvas.width / 2) / coord;
+    mousey = (mousey - canvas.height / 2) / coord;
+    
+    moveto(circle, mousex, mousey);
+}
+
 function mouseclick() {
     circle.x = circle.hitx;
     circle.y = circle.hity;
-	
-	circle.linei = circle.line;
+    
+    circle.linei = circle.line;
 }
 
 /* window resize */
