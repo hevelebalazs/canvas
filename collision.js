@@ -9,23 +9,31 @@ var mousex = 0, mousey = 0;
 var circle = {
     x: -5, y: 2,
     r: 1,
+    action: "nothing",
+    /* move */
+    line: -1, linei: -1, /* index of touching line */
     tox: 0, toy: 0,      /* move target */
-    angle: 0,            /* move angle */
-    length: 0,           /* move distance */
     x1: 0, y1: 0,        /* helper points */
     tox1: 0, toy1: 0,    /* helper points */
     hitx: 0, hity: 0,    /* first hit point */
-    line: -1, linei: -1, /* index of touching line */
-
+    angle: 0,            /* move angle */
+    length: 0,           /* move distance */
+    /* rotate */
+    point: -1, pointi: -1, /* rotation point */
+    rotx: 0, roty: 0,      /* center after rotation */
+    rotdist: 0             /* rotation distance */
 };
 
 var lines = [{ x1:  -5, y1: -1,  x2:  5, y2:  1 },
              { x1:   5, y1: .5,  x2:  0, y2: -3 },
              { x1: -10, y1: -5,  x2: -5, y2:  0 },
-             { x1:  -5, y1:  5,  x2:  5, y2:  6 }
+             { x1:  -5, y1:  5,  x2:  5, y2:  6 },
+             { x1:  -5, y1:  6,  x2:  5, y2:  7 }
             ];
 
 function draw() {
+        
+    context.restore();
     /* fill canvas */
     context.fillStyle = "#FFFFCC";
     context.rect(0, 0, canvas.width, canvas.height);
@@ -36,23 +44,44 @@ function draw() {
     context.translate(canvas.width / 2, canvas.height / 2);
     context.scale(coord, coord);
     
-    context.strokeStyle = "#cb8080";
-    context.lineWidth = 2 * circle.r;
-    context.beginPath();
-    context.moveTo(circle.x, circle.y);
-    context.lineTo(circle.hitx, circle.hity);
-    context.stroke();
+    if (circle.action == "move") {
+        /* draw connecting line */     
+        context.strokeStyle = "#cb8080";
+        context.lineWidth = 2 * circle.r;
+        context.beginPath();
+        context.moveTo(circle.x, circle.y);
+        context.lineTo(circle.hitx, circle.hity);
+        context.stroke();
+        
+        /* draw first hit point */
+        context.fillStyle = "#960000"
+        context.beginPath();
+        context.arc(circle.hitx, circle.hity, circle.r, 0, 2 * Math.PI);
+        context.fill();
+    }
+    if (circle.action == "rotate") {
+        /* draw connecting arc */
+        context.fillStyle = "#cb8080";
+        context.beginPath();
+        
+        if (!circle.clockwise) {
+            context.arc(circle.pointi.x, circle.pointi.y, 2 * circle.r, circle.pointangle, circle.rotangle);
+        } else {
+            context.arc(circle.pointi.x, circle.pointi.y, 2 * circle.r, circle.rotangle, circle.pointangle);
+        }
+        context.fill();
+        
+        /* draw final circle */
+        context.fillStyle = "#960000";
+        context.beginPath();
+        context.arc(circle.rotx, circle.roty, circle.r, 0, 2 * Math.PI);
+        context.fill();
+    }
     
     /* draw circle */
     context.fillStyle = "#960000";
     context.beginPath();
     context.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
-    context.fill();
-    
-    /* draw first hit point */
-    context.fillStyle = "FF0000"
-    context.beginPath();
-    context.arc(circle.hitx, circle.hity, circle.r, 0, 2 * Math.PI);
     context.fill();
     
     /* draw lines */
@@ -67,14 +96,11 @@ function draw() {
             context.strokeStyle = "#000000";
         }
         
-        
         context.beginPath();
         context.moveTo(line.x1, line.y1);
         context.lineTo(line.x2, line.y2);
         context.stroke();
     }
-    
-    context.restore();
 }
 
 function update() {
@@ -361,14 +387,14 @@ function linedist(circle, line) {
     var point1 = pointdist(circle, line.x1, line.y1);
     var point2 = pointdist(circle, line.x2, line.y2);
     
-    if (point1 < dist) dist = point1;
-    if (point2 < dist) dist = point2;
+    if (point1 <= circle.r) dist = circle.length;
+    if (point2 <= circle.r) dist = circle.length;
     
     return dist;
 }
 
 /* move circle to (x, y) or to first obstacle on its way */
-/* circle will not be moved, only hitx, hity, tox, toy, angle, length, line and line1 values set */
+/* does not actually move circle, but updates movement values */
 function moveto(circle, x, y) {
     /* init movement */
     circle.tox = x;
@@ -445,17 +471,30 @@ function moveto(circle, x, y) {
     var mindist = circle.length;
     
     circle.line = -1;
+    circle.point = -1;
     
     /* find first colliding point */
-    /*for (i = 0; i < lines.length; ++i) {
+    for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
         
         var dist1 = pointdist(circle, line.x1, line.y1);
-        if (dist1 < mindist) mindist = dist1;
+        /* is circle already touching this? */
+        var touch1 = (circle.pointi != -1) && (circle.pointi.x == line.x1) && (circle.pointi.y == line.y1);
+        
+        if (!touch1 && dist1 < mindist) {
+            mindist = dist1;
+            circle.point = {x: line.x1, y: line.y1};
+        }
         
         var dist2 = pointdist(circle, line.x2, line.y2);
-        if (dist2 < mindist) mindist = dist2;
-    }*/
+        /* is circle already touching this? */
+        var touch2 = (circle.pointi != -1) && (circle.pointi.x == line.x2) && (circle.pointi.y == line.y2);
+        
+        if (!touch2 && dist2 < mindist) {
+            mindist = dist2;
+            circle.point = {x: line.x2, y: line.y2};
+        }
+    }
     
     /* find first colliding line */
     for (i = 0; i < lines.length; ++i) {
@@ -470,13 +509,208 @@ function moveto(circle, x, y) {
         if (dist < mindist) {
             mindist = dist;
             circle.line = i;
+            circle.point = -1;
         }
     }
+    
+    circle.action = "move";
     
     circle.hitx = circle.x + mindist * Math.cos(circle.angle);
     circle.hity = circle.y + mindist * Math.sin(circle.angle);
 }
 
+/* get how much circle can rotate before colliding with point (x, y) */
+/* if no such collision, circle.rotdist will be returned */
+function pointrot(circle, x, y) {
+    /* are points close enough? */
+    var point = circle.pointi;
+    
+    /* skip same point */
+    if (point.x == x && point.y == y) return circle.rotdist;
+    
+    var dist = distance(x, y, point.x, point.y);
+    
+    if (dist > 2 * circle.r) return circle.rotdist;
+    
+    /* get angle at collision */
+    var centerx = (x + point.x) / 2;
+    var centery = (y + point.y) / 2;
+    
+    var angle = Math.atan2(y - point.y, x - point.x) + Math.PI / 2;
+    
+    var side1 = distance(x, y, centerx, centery);
+    var side = Math.sqrt(circle.r * circle.r - side1 * side1);
+    
+    var dx = side * Math.cos(angle);
+    var dy = side * Math.sin(angle);
+    
+    var x1 = centerx + dx;
+    var y1 = centery + dy;
+    var angle1 = Math.atan2(y1 - point.y, x1 - point.x);
+    
+    var x2 = centerx - dx;
+    var y2 = centery - dy;
+    var angle2 = Math.atan2(y2 - point.y, x2 - point.x);
+    
+    var dist1, dist2;
+    if (circle.clockwise) {
+        dist1 = angledistance(angle1, circle.pointangle);
+        dist2 = angledistance(angle2, circle.pointangle);
+    } else {
+        dist1 = angledistance(circle.pointangle, angle1);
+        dist2 = angledistance(circle.pointangle, angle2);
+    }
+    
+    if (dist1 < dist2) return dist1;
+    else return dist2;
+}
+
+/* get how much circle can rotate before colliding with line */
+/* if no such collision, circle.rotdist will be returned */
+function linerot(circle, line) {
+    /* get circle distance from line */
+    var point = circle.pointi;
+    
+    var area = trianglearea(point.x, point.y, line.x1, line.y1, line.x2, line.y2);
+    var linelen = distance(line.x1, line.y1, line.x2, line.y2);
+    var dist = 2 * area / linelen;
+    
+    /* no collision if too far away */
+    if (dist > 2 * circle.r) return circle.rotdist;
+    
+    /* get intersection point */
+    var lineangle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+    var dir = direction(point.x, point.y, line.x1, line.y1, line.x2, line.y2);
+    
+    var angle;
+    
+    if (!dir) angle = lineangle + Math.PI / 2;
+    else angle = lineangle - Math.PI / 2; 
+    
+    var inx = point.x + dist * Math.cos(angle);
+    var iny = point.y + dist * Math.sin(angle);
+    
+    /* calculate center of circle on collision */
+    var side1 = Math.abs(dist - circle.r);
+    var side2 = Math.sqrt(circle.r * circle.r - side1 * side1);
+    
+    var dx = side2 * Math.cos(lineangle);
+    var dy = side2 * Math.sin(lineangle);
+    
+    var dx1 = circle.r * Math.cos(angle);
+    var dy1 = circle.r * Math.sin(angle);
+    
+    var x1 = inx + dx - dx1;
+    var y1 = iny + dy - dy1;
+    var angle1 = Math.atan2(y1 - point.y, x1 - point.x);
+    
+    var x2 = inx - dx - dx1;
+    var y2 = iny - dy - dy1;
+    var angle2 = Math.atan2(y2 - point.y, x2 - point.x);
+    
+    /* find closest of two angles */
+    var dist1, dist2;
+    if (circle.clockwise) {
+        dist1 = angledistance(angle1, circle.pointangle);
+        dist2 = angledistance(angle2, circle.pointangle);
+    } else {
+        dist1 = angledistance(circle.pointangle, angle1);
+        dist2 = angledistance(circle.pointangle, angle2);
+    }
+    
+    if (dist1 < dist2) return dist1;
+    else return dist2;
+}
+
+/* rotate circle until it faces (x, y) or touches first obstacle */
+/* does not actually move circle, but updates rotation values */
+function rotateto(circle, x, y) {
+    var point = circle.pointi;
+
+    var pointangle = Math.atan2(circle.y - point.y, circle.x - point.x);
+    var moveangle = Math.atan2(y - circle.y, x - circle.x);
+    
+    var dist = angledistance(moveangle, pointangle);
+    var rotangle;
+    
+    if (Math.sin(dist) > 0) {
+        rotangle = moveangle + Math.PI / 2;
+    } else {
+        rotangle = moveangle - Math.PI / 2;
+    }
+    
+    circle.pointangle = pointangle;
+    circle.rotangle = rotangle;
+
+    /* going away from point? */
+    dist = angledistance(moveangle, pointangle);
+    
+    if (Math.cos(dist) > 0) {
+        moveto(circle, x, y);
+        return;
+    }
+    
+    /* which direction to rotate? */
+    rotdist = angledistance(pointangle, rotangle);
+    
+    var clockwise = (dist <= Math.PI);
+    circle.clockwise = clockwise;
+    
+    circle.action = "rotate";
+    
+    circle.rotx = point.x + circle.r * Math.cos(rotangle);
+    circle.roty = point.y + circle.r * Math.sin(rotangle);
+    
+    var mindist;
+    /* find closest obstacle */
+    if (!clockwise) mindist = angledistance(pointangle, rotangle);
+    else mindist = angledistance(rotangle, pointangle);
+    
+    circle.line = -1;
+    circle.point = -1;
+    
+    circle.rotdist = mindist;
+    /* find first colliding point */
+    var i;
+    for (i = 0; i < lines.length; ++i) {
+        var line = lines[i];
+        
+        /* point 1 */
+        var dist1 = pointrot(circle, line.x1, line.y1);
+        if (dist1 < mindist) {
+            mindist = dist1;
+            circle.point = {x: line.x1, y: line.y1};
+        }
+        
+        /* point 2 */
+        var dist2 = pointrot(circle, line.x2, line.y2);
+        if (dist2 < mindist) {
+            mindist = dist2;
+            circle.point = {x: line.x2, y: line.y2};
+        }
+    }
+    
+    /* find first colliding line */
+    for (i = 0; i < lines.length; ++i) {
+        var line = lines[i];
+        
+        var dist = linerot(circle, line);
+        if (dist < mindist) {
+            mindist = dist;
+            circle.line = i;
+            circle.point = -1;
+        }
+    }
+    
+    if (clockwise) {
+        circle.rotangle = pointangle - mindist;
+    } else {
+        circle.rotangle = pointangle + mindist;
+    }
+    
+    circle.rotx = point.x + circle.r * Math.cos(circle.rotangle);
+    circle.roty = point.y + circle.r * Math.sin(circle.rotangle);
+}
 
 function mousemove(event) {
     /* save mouse coordinates */
@@ -487,14 +721,25 @@ function mousemove(event) {
     mousex = (mousex - canvas.width / 2) / coord;
     mousey = (mousey - canvas.height / 2) / coord;
     
-    moveto(circle, mousex, mousey);
+    if (circle.pointi == -1) {
+        moveto(circle, mousex, mousey);
+    } else {
+        rotateto(circle, mousex, mousey);
+    }
 }
 
 function mouseclick() {
-    circle.x = circle.hitx;
-    circle.y = circle.hity;
+    if (circle.action == "move") {
+        circle.x = circle.hitx;
+        circle.y = circle.hity;
+    }
+    if (circle.action == "rotate") {
+        circle.x = circle.rotx;
+        circle.y = circle.roty;
+    }
     
     circle.linei = circle.line;
+    circle.pointi = circle.point;
 }
 
 /* window resize */
