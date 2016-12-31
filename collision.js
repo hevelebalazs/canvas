@@ -10,6 +10,7 @@ var circle = {
     x: -5, y: 2,
     r: 1,
     action: "nothing",
+    movedist: 0,           /* how much circle moves */
     /* move */
     line: -1, linei: -1,   /* index of touching line */
     line2: -1, linei2: -1, /* second touching line */
@@ -567,6 +568,8 @@ function moveto(circle, x, y) {
             circle.point2 = -1;
         }
     }
+    
+    circle.movedist = distance(circle.x, circle.y, circle.hitx, circle.hity);
 }
 
 /* get how much circle can rotate before colliding with point (x, y) */
@@ -826,6 +829,8 @@ function rotateto(circle, x, y) {
     
     circle.rotx = point.x + circle.r * Math.cos(circle.rotangle);
     circle.roty = point.y + circle.r * Math.sin(circle.rotangle);
+    
+    circle.movedist = 2 * circle.r * mindist;
 }
 
 function circlepointangle(circle, point) {
@@ -948,6 +953,7 @@ function nextstate(circle) {
         x: circle.x, y: circle.y,
         r: circle.r,
         action: "nothing",
+        movedist: 0,           /* how much circle moves */
         /* move */
         line: -1, linei: -1,   /* index of touching line */
         line2: -1, linei2: -1, /* second touching line */
@@ -992,7 +998,13 @@ function mousemove(event) {
     mousex = (mousex - canvas.width / 2) / coord;
     mousey = (mousey - canvas.height / 2) / coord;
     
-    stateto(circle, mousex, mousey);
+    var mouseangle = Math.atan2(mousey - circle.y, mousex - circle.x);
+    var maxdist = distance(mousex, mousey, circle.x, circle.y);
+
+    var tox = circle.x + maxdist * Math.cos(mouseangle);
+    var toy = circle.y + maxdist * Math.sin(mouseangle);
+    stateto(circle, tox, toy);
+    maxdist -= circle.movedist;
     
     /* build array of states */
     var state = circle;
@@ -1007,20 +1019,31 @@ function mousemove(event) {
             /* very small distance */
             break;
         }
+        if (maxdist <= 0) return;
         
-        stateto(next, mousex, mousey);
+        tox = next.x + maxdist * Math.cos(mouseangle);
+        toy = next.y + maxdist * Math.sin(mouseangle);
+        stateto(next, tox, toy);
+        maxdist -= next.movedist;
         
         state = next;
         circles.push(state);
     }
     
     last = state;
-    
-    console.log(circles.length);
 }
 
 function mouseclick() {
     circle = last;
+    
+    if (circle.linei == -1) {
+        circle.linei  = circle.linei2;
+        circle.linei2 = -1;
+    }
+    if (circle.pointi == -1) {
+        circle.pointi  = circle.pointi2;
+        circle.pointi2 = -1;
+    }
 }
 /* window resize */
 
