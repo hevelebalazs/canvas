@@ -38,9 +38,50 @@ var lines = [{ x1:  -5, y1: -1,  x2:  5, y2:  1 },
              { x1:  -5, y1:  6,  x2:  5, y2:  7 }
             ];
             
+function fillcircle(circle) {
+    context.fillStyle = "#00cc00"
+    context.strokeStyle = "#00cc00";
+    var padding = 2 / coord;
+    
+    if (circle.action == "move") {
+        /* draw connecting line */     
+        context.lineWidth = 2 * circle.r + 2 * padding;
+        context.beginPath();
+        context.moveTo(circle.x, circle.y);
+        context.lineTo(circle.hitx, circle.hity);
+        context.stroke();
+        
+        /* draw first hit point */
+        context.beginPath();
+        context.arc(circle.hitx, circle.hity, circle.r + padding, 0, 2 * Math.PI);
+        context.fill();
+    }
+    if (circle.action == "rotate") {
+        /* draw connecting arc */
+        context.beginPath();
+        
+        if (!circle.clockwise) {
+            context.arc(circle.pointi.x, circle.pointi.y, 2 * circle.r + padding, circle.pointangle, circle.rotangle);
+        } else {
+            context.arc(circle.pointi.x, circle.pointi.y, 2 * circle.r + padding, circle.rotangle, circle.pointangle);
+        }
+        context.fill();
+        
+        /* draw final circle */
+        context.beginPath();
+        context.arc(circle.rotx, circle.roty, circle.r + padding, 0, 2 * Math.PI);
+        context.fill();
+    }
+    
+    /* draw circle */
+    context.beginPath();
+    context.arc(circle.x, circle.y, circle.r + padding, 0, 2 * Math.PI);
+    context.fill();
+}
+            
 function drawcircle(circle) {
-    context.fillStyle = "#cb8080"
-    context.strokeStyle = "#cb8080";
+    context.fillStyle = "#39ff14"
+    context.strokeStyle = "#39ff14";
     
     if (circle.action == "move") {
         /* draw connecting line */     
@@ -93,6 +134,10 @@ function draw() {
     
     /* draw all circles */
     var i;
+    for (i = 0; i < circles.length; ++i) {
+        fillcircle(circles[i]);
+    }
+    
     for (i = 0; i < circles.length; ++i) {
         drawcircle(circles[i]);
     }
