@@ -919,6 +919,7 @@ function anglecloser(angle1, angle, angle2) {
 /* get next text of "circle" towards point (x, y) */
 function stateto(circle, x, y) {
     var moveangle = Math.atan2(y - circle.y, x - circle.x);
+    var maxdist = distance(circle.x, circle.y, x, y);
     /* handle two obstacle collisions */
     if (circle.pointi != -1 && circle.pointi2 != -1) {
         /* two points */
@@ -928,6 +929,7 @@ function stateto(circle, x, y) {
         if (between(angle1, moveangle, angle2)) {
             /* can't move */
             circle.action = "none";
+            circle.movedist = maxdist;
             return;
         }
         
@@ -948,6 +950,7 @@ function stateto(circle, x, y) {
         
         if (between(angle1, moveangle, angle2)) {
             /* can't move */
+            circle.movedist = maxdist;
             circle.action = "none";
             return;
         }
@@ -969,6 +972,7 @@ function stateto(circle, x, y) {
         
         if (between(angle1, moveangle, angle2)) {
             /* can't move */
+            circle.movedist = maxdist;
             circle.action = "none";
             return;
         }
@@ -1062,9 +1066,8 @@ function mousemove(event) {
         
         if (dist < 1e-10) {
             /* very small distance */
-            break;
+            /* break; */
         }
-        if (maxdist <= 0) return;
         
         tox = next.x + maxdist * Math.cos(mouseangle);
         toy = next.y + maxdist * Math.sin(mouseangle);
@@ -1073,6 +1076,8 @@ function mousemove(event) {
         
         state = next;
         circles.push(state);
+        
+        if (maxdist <= 0) break;
     }
     
     last = state;
@@ -1081,14 +1086,11 @@ function mousemove(event) {
 function mouseclick() {
     circle = last;
     
-    if (circle.linei == -1) {
-        circle.linei  = circle.linei2;
-        circle.linei2 = -1;
-    }
-    if (circle.pointi == -1) {
-        circle.pointi  = circle.pointi2;
-        circle.pointi2 = -1;
-    }
+    circle.linei   = -1;
+    circle.linei2  = -1;
+    circle.pointi  = -1;
+    circle.pointi2 = -1;
+    
 }
 /* window resize */
 
