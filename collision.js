@@ -928,8 +928,8 @@ function stateto(circle, x, y) {
         
         if (between(angle1, moveangle, angle2)) {
             /* can't move */
-            circle.action = "none";
             circle.movedist = maxdist;
+            circle.action = "none";
             return;
         }
         
@@ -1062,13 +1062,6 @@ function mousemove(event) {
     for (var count = 0; count < 100; ++count) {
         var next = nextstate(state);
         
-        var dist = distance(state.x, state.y, next.x, next.y);
-        
-        if (dist < 1e-10) {
-            /* very small distance */
-            /* break; */
-        }
-        
         tox = next.x + maxdist * Math.cos(mouseangle);
         toy = next.y + maxdist * Math.sin(mouseangle);
         stateto(next, tox, toy);
@@ -1080,7 +1073,7 @@ function mousemove(event) {
         if (maxdist <= 0) break;
     }
     
-    last = state;
+    last = nextstate(state);
 }
 
 function mouseclick() {
@@ -1091,6 +1084,10 @@ function mouseclick() {
     circle.pointi  = -1;
     circle.pointi2 = -1;
     
+    circle.line   = -1;
+    circle.line2  = -1;
+    circle.point  = -1;
+    circle.point2 = -1;
 }
 /* window resize */
 
