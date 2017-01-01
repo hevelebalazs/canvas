@@ -402,13 +402,6 @@ function linedist(circle, line) {
     var inx = intersectionx(circle.x, circle.y, circle.tox, circle.toy, line.x1, line.y1, line.x2, line.y2);
     var iny = intersectiony(circle.x, circle.y, circle.tox, circle.toy, line.x1, line.y1, line.x2, line.y2);
     
-    /* HELP */
-    
-    circle.inx = inx;
-    circle.iny = iny;
-    
-    /* /HELP */
-    
     /* get circle start line distance from intersection */
     var dist = distance(circle.x, circle.y, inx, iny);
     
@@ -423,7 +416,8 @@ function linedist(circle, line) {
     
     dist -= disthit;
     
-    /* check if line segment actually exists on the intersection point */
+    if (dist < 0) return circle.length;
+    
     var pointx = circle.x + dist * Math.cos(circle.angle);
     var pointy = circle.y + dist * Math.sin(circle.angle);
     
@@ -438,14 +432,15 @@ function linedist(circle, line) {
     pointx += circle.r * Math.cos(addangle);
     pointy += circle.r * Math.sin(addangle);
     
-    if (!lineexist(line, pointx, pointy)) dist = circle.length;
+    /* check if line segment actually exists on the intersection point */
+    if (!lineexist(line, pointx, pointy)) return circle.length;
     
     /* check line endpoints */
     var point1 = pointdist(circle, line.x1, line.y1);
     var point2 = pointdist(circle, line.x2, line.y2);
     
-    if (point1 <= circle.r) dist = circle.length;
-    if (point2 <= circle.r) dist = circle.length;
+    if (point1 <= dist) dist = circle.length;
+    if (point2 <= dist) dist = circle.length;
     
     return dist;
 }
