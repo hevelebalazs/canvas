@@ -723,6 +723,9 @@ function linerot(circle, line) {
         /* endpoint */
         angle1 = angle + Math.PI;
         angle2 = angle + Math.PI;
+        
+        angle1 = -angle1;
+        angle2 = -angle2;
     }
     
     /* find closest of two angles */
@@ -735,8 +738,7 @@ function linerot(circle, line) {
         dist2 = angledistance(circle.pointangle, angle2);
     }
     
-    if (dist1 < dist2) return dist1;
-    else return dist2;
+    return Math.min(dist1, dist2, circle.rotdist);
 }
 
 /* rotate circle until it faces (x, y) or touches first obstacle */
