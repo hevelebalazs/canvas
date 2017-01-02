@@ -8,7 +8,7 @@ var mousex = 0, mousey = 0;
 
 var circle = {
     x: -5, y: 2,
-    r: 1,
+    r: .35,
     action: "nothing",
     movedist: 0,           /* how much circle moves */
     /* move */
@@ -30,6 +30,11 @@ var circle = {
 var last;
 
 var circles = [];
+
+var timer;
+var tick = 10;
+
+var speed = 5;
 
 var lines = [{ x1:  -5, y1: -1,  x2:  5, y2:  1 },
              { x1:   5, y1: .5,  x2:  0, y2: -3 },
@@ -133,14 +138,17 @@ function draw() {
     context.scale(coord, coord);
     
     /* draw all circles */
-    var i;
+    /*var i;
     for (i = 0; i < circles.length; ++i) {
         fillcircle(circles[i]);
     }
     
     for (i = 0; i < circles.length; ++i) {
         drawcircle(circles[i]);
-    }
+    }*/
+    /* draw circle */
+    fillcircle(circle);
+    drawcircle(circle);
     
     /* draw lines */
     context.lineWidth = 2 / coord;
@@ -158,12 +166,6 @@ function draw() {
         context.lineTo(line.x2, line.y2);
         context.stroke();
     }
-}
-
-function update() {
-    draw();
-    
-    timer = setTimeout(update, tick);
 }
 
 function distance(x1, y1, x2, y2) {
@@ -795,7 +797,7 @@ function rotateto(circle, x, y) {
     circle.line = -1;
     circle.point = circle.pointi;
     
-    circle.rotdist = mindist;
+    circle.rotdist = mindist / 10;
     /* find first colliding point */
     var minpoint = -1;
     var i;
@@ -1036,6 +1038,95 @@ function nextstate(circle) {
     return next;
 }
 
+function checkpoint(circle, x, y) {
+    var dist = distance(circle.x, circle.y, x, y);
+    
+    if (dist > circle.r) return;
+    
+    if (circle.pointi == -1) circle.pointi = {x: x, y: y};
+    else circle.pointi2 = {x: x, y: y};
+    
+    /* move away */
+    var angle = Math.atan2(circle.y - y, circle.x - x);
+    var length = circle.r - dist;
+    
+    circle.x += length * Math.cos(angle);
+    circle.y += length * Math.sin(angle);
+}
+
+function checkline(circle, i) {
+    var line = lines[i];
+    /* check endpoints */
+    var dist1 = distance(circle.x, circle.y, line.x1, line.y1);
+    
+    if (dist1 < circle.r) {
+        checkpoint(circle, line.x1, line.y1);
+        circle.linei2 = i;
+    }
+    
+    var dist2 = distance(circle.x, circle.y, line.x2, line.y2);
+    
+    if (dist2 < circle.r) {
+        checkpoint(circle, line.x2, line.y2);
+        circle.linei2 = i;
+    }
+}
+
+/* apply to "circle" a force of size "length" in angle "angle" */
+function apply(circle, angle, length) {
+    var maxdist = length;
+    var tox = circle.x + length * Math.cos(angle);
+    var toy = circle.y + length * Math.sin(angle);
+    
+    stateto(circle, tox, toy);
+    maxdist -= circle.movedist;
+    
+    var count;
+    var state = circle;
+    
+    for (count = 0; count < 100; ++count) {
+        var next = nextstate(state);
+        
+        tox = next.x + maxdist * Math.cos(angle);
+        toy = next.y + maxdist * Math.sin(angle);
+        stateto(next, tox, toy);
+        maxdist -= next.movedist;
+        
+        state = next;
+        
+        if (maxdist <= 0) break;
+    }
+    
+    circle = nextstate(state);
+    
+    var i;
+    for (i = 0; i < lines.length; ++i) checkline(circle, i);
+    
+    circle.linei   = -1;
+    circle.linei2  = -1;
+    circle.pointi  = -1;
+    circle.pointi2 = -1;
+    
+    return circle;
+}
+
+function update() {
+    var mouseangle = Math.atan2(mousey - circle.y, mousex - circle.x);
+    var mousedist = distance(mousex, mousey, circle.x, circle.y);
+    
+    var speed1 = speed * (tick / 1000);
+    
+    var maxdist = Math.min(speed1, mousedist);
+    
+    moveangle = mouseangle;
+    movedist = maxdist;
+    
+    circle = apply(circle, moveangle, movedist);
+    draw();
+    
+    timer = setTimeout(update, tick);   
+}
+
 function mousemove(event) {
     /* save mouse coordinates */
     mousex = event.clientX;
@@ -1044,51 +1135,31 @@ function mousemove(event) {
     /* transform from pixel to coordinates */
     mousex = (mousex - canvas.width / 2) / coord;
     mousey = (mousey - canvas.height / 2) / coord;
-    
-    var mouseangle = Math.atan2(mousey - circle.y, mousex - circle.x);
-    var maxdist = distance(mousex, mousey, circle.x, circle.y);
-
-    var tox = circle.x + maxdist * Math.cos(mouseangle);
-    var toy = circle.y + maxdist * Math.sin(mouseangle);
-    stateto(circle, tox, toy);
-    maxdist -= circle.movedist;
-    
-    /* build array of states */
-    var state = circle;
-    circles = [state];
-    
-    for (var count = 0; count < 100; ++count) {
-        var next = nextstate(state);
-        
-        tox = next.x + maxdist * Math.cos(mouseangle);
-        toy = next.y + maxdist * Math.sin(mouseangle);
-        stateto(next, tox, toy);
-        maxdist -= next.movedist;
-        
-        state = next;
-        circles.push(state);
-        
-        if (maxdist <= 0) break;
-    }
-    
-    last = nextstate(state);
 }
 
 function mouseclick() {
-    circle = last;
-    
-    circle.linei   = -1;
-    circle.linei2  = -1;
-    circle.pointi  = -1;
-    circle.pointi2 = -1;
-    
-    circle.line   = -1;
-    circle.line2  = -1;
-    circle.point  = -1;
-    circle.point2 = -1;
+    if (timer != 0) {
+        clearTimeout(timer);
+        timer = 0;
+    } else {
+        update();
+    }
 }
-/* window resize */
 
+function mousescroll(event) {
+    
+    var phi = (Math.sqrt(5) + 1) / 2;
+    
+    if (event.deltaY < 0) {
+        if (tick < 640) tick *= phi;
+    } else {
+        if (tick > 10) tick /= phi;
+    }
+    
+    console.log(tick);
+}
+
+/* window resize */
 function resize() {
     /* resize canvas */
     canvas.width = canvas.offsetWidth;
@@ -1116,7 +1187,9 @@ function init() {
     update();
 }
 
+alert("circle follows mouse \n CLICK to PAUSE/PLAY \n SCROLL to add/remove LAG");
 window.onload = init;
 window.onresize = resize;
 window.onmousemove = mousemove;
 window.onmouseup = mouseclick;
+window.onwheel = mousescroll;
