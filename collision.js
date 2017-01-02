@@ -458,6 +458,7 @@ function moveto(circle, x, y) {
     var endx, endy;
     var enddist;
     var alongline = false;
+    var movex = 1;
     /* is it touching a line? */
     if (circle.linei != -1) {
         var line = lines[circle.linei];
@@ -500,6 +501,10 @@ function moveto(circle, x, y) {
             if (enddist < length) length = enddist;
             
             /* update circle movement angle and distance  */
+            var dist = angledistance(lineangle, circle.angle);
+            var mult = Math.cos(dist);
+            if (mult != 0) movex = Math.abs(1 / mult);
+            
             circle.angle = lineangle;
             circle.length = length;
             circle.tox = circle.x + length * Math.cos(lineangle);
@@ -607,7 +612,7 @@ function moveto(circle, x, y) {
         }
     }
     
-    circle.movedist = distance(circle.x, circle.y, circle.hitx, circle.hity);
+    circle.movedist = movex * distance(circle.x, circle.y, circle.hitx, circle.hity);
 }
 
 /* get how much circle can rotate before colliding with point (x, y) */
