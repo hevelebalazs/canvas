@@ -416,8 +416,6 @@ function linedist(circle, line) {
     
     dist -= disthit;
     
-    if (dist < 0) return circle.length;
-    
     var pointx = circle.x + dist * Math.cos(circle.angle);
     var pointy = circle.y + dist * Math.sin(circle.angle);
     
