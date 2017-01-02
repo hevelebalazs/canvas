@@ -142,13 +142,8 @@ function draw() {
     context.lineWidth = 2 / coord;
     for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
-        
-        if (typeof line.touch != undefined && line.touch == true) {
-            context.strokeStyle = "#FF0000";
-        } else {
-            context.strokeStyle = "#000000";
-        }
-        
+
+        context.strokeStyle = "#000000";
         context.beginPath();
         context.moveTo(line.x1, line.y1);
         context.lineTo(line.x2, line.y2);
@@ -376,7 +371,7 @@ function intersectiony(x1, y1, x2, y2, x3, y3, x4, y4) {
 }
 
 /* does line exist on (x, y)? */
-/* only border of line is checked, NO intersection */
+/* only border box of line is checked, NO intersection */
 function lineexist(line, x, y) {
     if (x < line.x1 && x < line.x2) return false;
     if (x > line.x1 && x > line.x2) return false;
@@ -488,7 +483,7 @@ function moveto(circle, x, y) {
                 lineangle = lineangle + Math.PI;
             }
             
-            /* calculate intersection distance form end point */
+            /* calculate intersection distance from end point */
             var inx = circle.x + circle.r * Math.cos(angle);
             var iny = circle.y + circle.r * Math.sin(angle);
             
@@ -721,10 +716,13 @@ function linerot(circle, line) {
         angle2 = Math.atan2(y2 - point.y, x2 - point.x);
     }
     
-    if (dist == 0) {
+    var endpoint1 = (line.x1 == point.x) && (line.y1 == point.y);
+    var endpoint2 = (line.x2 == point.x) && (line.y2 == point.y);
+    
+    if (endpoint1 || endpoint2) {
         /* endpoint */
-        angle1 = lineangle + Math.PI / 2;
-        angle2 = lineangle - Math.PI / 2;
+        angle1 = angle + Math.PI;
+        angle2 = angle + Math.PI;
     }
     
     /* find closest of two angles */
@@ -1069,9 +1067,11 @@ function checkline(circle, i) {
     
     if (dist1 < circle.r) {
         checkpoint(circle, line.x1, line.y1);
+        circle.line = 0;
         circle.line2 = lines[i];
     } else if (dist2 < circle.r) {
         checkpoint(circle, line.x2, line.y2);
+        circle.line = 0;
         circle.line2 = lines[i];
     } else if (dist < circle.r && (exist1 || exist2) && line.point != 0) {
         var angle;
@@ -1104,10 +1104,16 @@ function apply(circle, angle, length) {
         stateto(next, tox, toy);
         maxdist -= next.movedist;
         
+        if (next.x == state.x && next.y == state.y) {
+            state = next;
+            break;
+        }
+        
         state = next;
         
         if (maxdist <= 0) break;
     }
+    
     circle = nextstate(state);
     
     var i;
