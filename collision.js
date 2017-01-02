@@ -8,7 +8,7 @@ var mousex = 0, mousey = 0;
 
 var circle = {
     x: -5, y: 2,
-    r: .35,
+    r: 1,
     action: "nothing",
     movedist: 0,           /* how much circle moves */
     /* move */
@@ -37,7 +37,7 @@ var tick = 10;
 var speed = 5;
 
 var lines = [{ x1:  -5, y1: -1,  x2:  5, y2:  1 },
-             { x1:   5, y1: .5,  x2:  0, y2: -3 },
+             { x1:   5, y1:  1,  x2:  0, y2: -3 },
              { x1: -10, y1: -5,  x2: -5, y2:  0 },
              { x1:  -5, y1:  5,  x2:  5, y2:  6 },
              { x1:  -5, y1:  6,  x2:  5, y2:  7 }
@@ -441,6 +441,7 @@ function linedist(circle, line) {
     
     if (point1 <= dist) dist = circle.length;
     if (point2 <= dist) dist = circle.length;
+    if (dist < 0) dist = 0;
     
     return dist;
 }
@@ -875,7 +876,7 @@ function rotateto(circle, x, y) {
     circle.rotx = point.x + circle.r * Math.cos(circle.rotangle);
     circle.roty = point.y + circle.r * Math.sin(circle.rotangle);
     
-    circle.movedist = 2 * circle.r * mindist;
+    circle.movedist = 2 * mindist * circle.r * circle.r;
 }
 
 function circlepointangle(circle, point) {
@@ -1058,17 +1059,41 @@ function checkline(circle, i) {
     var line = lines[i];
     /* check endpoints */
     var dist1 = distance(circle.x, circle.y, line.x1, line.y1);
+    var dist2 = distance(circle.x, circle.y, line.x2, line.y2);
+    
+    var area = trianglearea(circle.x, circle.y, line.x1, line.y1, line.x2, line.y2);
+    var linelen = distance(line.x1, line.y1, line.x2, line.y2);
+    var dist = 2 * area / linelen;
+    
+    var lineangle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+    var angle1 = lineangle + Math.PI / 2;
+    var angle2 = lineangle - Math.PI / 2;
+    
+    var x1 = circle.x + circle.r * Math.cos(angle1);
+    var y1 = circle.y + circle.r * Math.sin(angle1);
+    var x2 = circle.x + circle.r * Math.cos(angle2);
+    var y2 = circle.y + circle.r * Math.sin(angle2);
+    
+    var exist1 = lineexist(line, x1, y1);
+    var exist2 = lineexist(line, x2, y2);
+    
+    /* circle-line intersection */
+    var inx = circle.x + circle.r * Math.sin();
     
     if (dist1 < circle.r) {
         checkpoint(circle, line.x1, line.y1);
         circle.linei2 = i;
-    }
-    
-    var dist2 = distance(circle.x, circle.y, line.x2, line.y2);
-    
-    if (dist2 < circle.r) {
+    } else if (dist2 < circle.r) {
         checkpoint(circle, line.x2, line.y2);
         circle.linei2 = i;
+    } else if (dist < circle.r && (exist1 || exist2) && line.pointi != -1) {
+        var angle;
+        var length = circle.r - dist;
+        var dir = direction(circle.x, circle.y, line.x1, line.y1, line.x2, line.y2);
+        if (dir) angle = angle1;
+        else angle = angle2;
+        circle.x += length * Math.cos(angle);
+        circle.y += length * Math.sin(angle);
     }
 }
 
@@ -1096,7 +1121,6 @@ function apply(circle, angle, length) {
         
         if (maxdist <= 0) break;
     }
-    
     circle = nextstate(state);
     
     var i;
@@ -1155,8 +1179,6 @@ function mousescroll(event) {
     } else {
         if (tick > 10) tick /= phi;
     }
-    
-    console.log(tick);
 }
 
 /* window resize */
