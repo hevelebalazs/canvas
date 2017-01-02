@@ -12,7 +12,7 @@ var circle = {
     action: "nothing",
     movedist: 0,      /* how much circle moves */
     /* move */
-    line: -1,         /* index of touching line */
+    line: -1,         /* touching line */
     line2: -1,        /* second touching line */
     tox: 0, toy: 0,   /* move target */
     x1: 0, y1: 0,     /* helper points */
@@ -154,6 +154,11 @@ function draw() {
         context.lineTo(line.x2, line.y2);
         context.stroke();
     }
+}
+
+/* do lines equal? */
+function lineequal(l1, l2) {
+    return (l1.x1 == l2.x1 && l1.x2 == l2.x2 && l1.y1 == l2.y1 && l1.y2 == l2.y2);
 }
 
 function distance(x1, y1, x2, y2) {
@@ -452,7 +457,7 @@ function moveto(circle, x, y) {
     var movex = 1;
     /* is it touching a line? */
     if (circle.line != -1) {
-        var line = lines[circle.line];
+        var line = circle.line;
         /* get collision angle */
         var lineangle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
         var angle;
@@ -554,22 +559,22 @@ function moveto(circle, x, y) {
     var minline = -1;
     
     for (i = 0; i < lines.length; ++i) {
-        if (i == circle.line) {
+        var line = lines[i];
+        if (lineequal(line, circle.line)) {
             /* skip touching line */
             continue;
         }
         
-        if (i == circle.line2) {
+        if (lineequal(line, circle.line2)) {
             /* skip second line */
             continue;
         }
         
-        var line = lines[i];
         var dist = linedist(circle, line);
         
         if (dist < mindist) {
             mindist = dist;
-            minline = i;
+            minline = line;
             minpoint = -1;
         }
     }
@@ -805,17 +810,17 @@ function rotateto(circle, x, y) {
     /* find first colliding line */
     var minline = -1;
     for (i = 0; i < lines.length; ++i) {
-        if (i == circle.line2) {
+        var line = lines[i];
+        
+        if (lineequal(line, circle.line2)) {
             /* skip second line */
             continue;
         }
         
-        var line = lines[i];
-        
         var dist = linerot(circle, line);
         if (dist < mindist) {
             mindist = dist;
-            minline = i;
+            minline = line;
             minpoint = -1;
         }
     }
@@ -833,7 +838,7 @@ function rotateto(circle, x, y) {
         circle.point  = point;
         circle.point2 = minpoint;
     } else {
-        var line = lines[minline];
+        var line = minline;
         var endpoint = (line.x1 == point.x) && (line.y1 == point.y);
         endpoint |= (line.x2 == point.x) && (line.y2 == point.y);
         if (endpoint) {
@@ -928,8 +933,8 @@ function stateto(circle, x, y) {
     }
     if (circle.line != -1 && circle.line2 != -1) {
         /* two lines */
-        var angle1 = circlelineangle(circle, lines[circle.line]);
-        var angle2 = circlelineangle(circle, lines[circle.line2]);
+        var angle1 = circlelineangle(circle, circle.line);
+        var angle2 = circlelineangle(circle, circle.line2);
         
         if (between(angle1, moveangle, angle2)) {
             /* can't move */
@@ -950,7 +955,7 @@ function stateto(circle, x, y) {
     }
     if (circle.line != -1 && circle.point != -1) {
         /* line and point */
-        var angle1 = circlelineangle(circle, lines[circle.line]);
+        var angle1 = circlelineangle(circle, circle.line);
         var angle2 = circlepointangle(circle, circle.point);
         
         if (between(angle1, moveangle, angle2)) {
@@ -1064,10 +1069,10 @@ function checkline(circle, i) {
     
     if (dist1 < circle.r) {
         checkpoint(circle, line.x1, line.y1);
-        circle.line2 = i;
+        circle.line2 = lines[i];
     } else if (dist2 < circle.r) {
         checkpoint(circle, line.x2, line.y2);
-        circle.line2 = i;
+        circle.line2 = lines[i];
     } else if (dist < circle.r && (exist1 || exist2) && line.point != -1) {
         var angle;
         var length = circle.r - dist;
