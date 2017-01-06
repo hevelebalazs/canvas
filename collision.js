@@ -1060,37 +1060,25 @@ function checkline(circle, i) {
 /* apply to "circle" a force of size "length" in angle "angle" */
 function apply(circle, angle, length) {
     var maxdist = length;
-    var tox = circle.x + length * Math.cos(angle);
-    var toy = circle.y + length * Math.sin(angle);
-    
-    stateto(circle, tox, toy);
-    maxdist -= circle.movedist;
-    
-    var count;
-    
-    for (count = 0; count < 100; ++count) {
-        nextstate(circle);
+
+    while (true) {
         var prevx = circle.x;
         var prevy = circle.y;
         
-        tox = circle.x + maxdist * Math.cos(angle);
-        toy = circle.y + maxdist * Math.sin(angle);
+        var tox = circle.x + maxdist * Math.cos(angle);
+        var toy = circle.y + maxdist * Math.sin(angle);
+        
         stateto(circle, tox, toy);
         maxdist -= circle.movedist;
         
-        if (prevx == circle.x && prevy == circle.y) break;
+        nextstate(circle);
+        
+        if (circle.x == prevx && circle.y == prevy) break;
         if (maxdist <= 0) break;
     }
     
-    nextstate(circle);
-    
     var i;
     for (i = 0; i < lines.length; ++i) checkline(circle, i);
-    
-    circle.line   = 0;
-    circle.line2  = 0;
-    circle.point  = 0;
-    circle.point2 = 0;
     
     return circle;
 }
