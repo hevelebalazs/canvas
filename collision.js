@@ -17,7 +17,6 @@ var circle = {
     tox: 0, toy: 0,   /* move target */
     x1: 0, y1: 0,     /* helper points */
     tox1: 0, toy1: 0, /* helper points */
-    hitx: 0, hity: 0, /* first hit point */
     angle: 0,         /* move angle */
     length: 0,        /* move distance */
     /* rotate */
@@ -45,36 +44,6 @@ function fillcircle(circle) {
     context.fillStyle = "#00cc00"
     context.strokeStyle = "#00cc00";
     var padding = 2 / coord;
-    
-    if (circle.action == "move") {
-        /* draw connecting line */     
-        context.lineWidth = 2 * circle.r + 2 * padding;
-        context.beginPath();
-        context.moveTo(circle.x, circle.y);
-        context.lineTo(circle.hitx, circle.hity);
-        context.stroke();
-        
-        /* draw first hit point */
-        context.beginPath();
-        context.arc(circle.hitx, circle.hity, circle.r + padding, 0, 2 * Math.PI);
-        context.fill();
-    }
-    if (circle.action == "rotate") {
-        /* draw connecting arc */
-        context.beginPath();
-        
-        if (!circle.clockwise) {
-            context.arc(circle.point.x, circle.point.y, 2 * circle.r + padding, circle.pointangle, circle.rotangle);
-        } else {
-            context.arc(circle.point.x, circle.point.y, 2 * circle.r + padding, circle.rotangle, circle.pointangle);
-        }
-        context.fill();
-        
-        /* draw final circle */
-        context.beginPath();
-        context.arc(circle.rotx, circle.roty, circle.r + padding, 0, 2 * Math.PI);
-        context.fill();
-    }
     
     /* draw circle */
     context.beginPath();
@@ -545,11 +514,6 @@ function moveto(circle, angle, length) {
         }
     }
     
-    circle.action = "move";
-    
-    circle.hitx = circle.x + mindist * Math.cos(circle.angle);
-    circle.hity = circle.y + mindist * Math.sin(circle.angle);
-    
     /* update state */
     if (!alongline) {
         circle.line   = minline;
@@ -571,10 +535,16 @@ function moveto(circle, angle, length) {
         }
     }
     
-    circle.movedist = movex * distance(circle.x, circle.y, circle.hitx, circle.hity);
+        
+    circle.action = "move";
     
-    circle.x = circle.hitx;
-    circle.y = circle.hity;
+    var hitx = circle.x + mindist * Math.cos(circle.angle);
+    var hity = circle.y + mindist * Math.sin(circle.angle);
+    
+    circle.movedist = movex * distance(circle.x, circle.y, hitx, hity);
+    
+    circle.x = hitx;
+    circle.y = hity;
 }
 
 /* get how much circle can rotate before colliding with point (x, y) */
