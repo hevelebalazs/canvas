@@ -984,46 +984,17 @@ function stateto(circle, x, y) {
     }
 }
 
-/* get next state from "circle" */
+/* update "circle" to its next state */
 function nextstate(circle) {
-    var next = {
-        x: circle.x, y: circle.y,
-        r: circle.r,
-        action: "nothing",
-        movedist: 0,      /* how much circle moves */
-        /* move */
-        line: 0,          /* index of touching line */
-        line2: 0,         /* second touching line */
-        tox: 0, toy: 0,   /* move target */
-        x1: 0, y1: 0,     /* helper points */
-        tox1: 0, toy1: 0, /* helper points */
-        hitx: 0, hity: 0, /* first hit point */
-        angle: 0,         /* move angle */
-        length: 0,        /* move distance */
-        /* rotate */
-        point: 0,         /* rotation point */
-        point2: 0,        /* second touching point */
-        rotx: 0, roty: 0, /* center after rotation */
-        rotdist: 0        /* rotation distance */
-    };
-    
-    /* position */
     if (circle.action == "move") {
-        next.x = circle.hitx;
-        next.y = circle.hity;
+        circle.x = circle.hitx;
+        circle.y = circle.hity;
     }
     
     if (circle.action == "rotate") {
-        next.x = circle.rotx;
-        next.y = circle.roty;
+        circle.x = circle.rotx;
+        circle.y = circle.roty;
     }
-    
-    next.line   = circle.line;
-    next.line2  = circle.line2;
-    next.point  = circle.point;
-    next.point2 = circle.point2;
-    
-    return next;
 }
 
 function checkpoint(circle, x, y) {
@@ -1096,27 +1067,22 @@ function apply(circle, angle, length) {
     maxdist -= circle.movedist;
     
     var count;
-    var state = circle;
     
     for (count = 0; count < 100; ++count) {
-        var next = nextstate(state);
+        nextstate(circle);
+        var prevx = circle.x;
+        var prevy = circle.y;
         
-        tox = next.x + maxdist * Math.cos(angle);
-        toy = next.y + maxdist * Math.sin(angle);
-        stateto(next, tox, toy);
-        maxdist -= next.movedist;
+        tox = circle.x + maxdist * Math.cos(angle);
+        toy = circle.y + maxdist * Math.sin(angle);
+        stateto(circle, tox, toy);
+        maxdist -= circle.movedist;
         
-        if (next.x == state.x && next.y == state.y) {
-            state = next;
-            break;
-        }
-        
-        state = next;
-        
+        if (prevx == circle.x && prevy == circle.y) break;
         if (maxdist <= 0) break;
     }
     
-    circle = nextstate(state);
+    nextstate(circle);
     
     var i;
     for (i = 0; i < lines.length; ++i) checkline(circle, i);
@@ -1140,7 +1106,7 @@ function update() {
     moveangle = mouseangle;
     movedist = maxdist;
     
-    circle = apply(circle, moveangle, movedist);
+    apply(circle, moveangle, movedist);
     draw();
     
     timer = setTimeout(update, tick);   
