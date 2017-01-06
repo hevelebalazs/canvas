@@ -778,7 +778,7 @@ function rotateto(circle, angle, length) {
     dist = angledistance(moveangle, pointangle);
     
     if (Math.cos(dist) > 0) {
-        moveto(circle, x, y);
+        moveto(circle, moveangle, movedist);
         return;
     }
     
