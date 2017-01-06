@@ -434,17 +434,17 @@ function linedist(circle, line) {
     return dist;
 }
 
-/* move circle to (x, y) or to first obstacle on its way */
+/* move "circle" by force */
 /* does not actually move circle, but updates movement values */
-function moveto(circle, x, y) {
+function moveto(circle, angle, length) {
     /* init movement */
-    circle.tox = x;
-    circle.toy = y;
+    circle.tox = circle.x + length * Math.cos(angle);
+    circle.toy = circle.y + length * Math.sin(angle);
     
-    if (x == circle.x && y == circle.y) return;
+    if (circle.tox == circle.x && circle.toy == circle.y) return;
     
-    circle.angle = Math.atan2(circle.toy - circle.y, circle.tox - circle.x);
-    circle.length = distance(circle.x, circle.y, circle.tox, circle.toy);
+    circle.angle = angle;
+    circle.length = length;
     
     var endx, endy;
     var enddist;
@@ -467,7 +467,7 @@ function moveto(circle, x, y) {
         
         if (alongline) {
             /* if not, move along the line */
-            var length = parallel(x - circle.x, y - circle.y, lineangle);
+            var length = parallel(circle.tox - circle.x, circle.toy - circle.y, lineangle);
             
             /* calculate maximum length */
             if (length < 0) {
@@ -500,6 +500,8 @@ function moveto(circle, x, y) {
             circle.length = length;
             circle.tox = circle.x + length * Math.cos(lineangle);
             circle.toy = circle.y + length * Math.sin(lineangle);
+        } else {
+            console.log("OPPOSE");
         }
     }
     
@@ -751,14 +753,14 @@ function linerot(circle, line) {
     return Math.min(dist1, dist2, circle.rotdist);
 }
 
-/* rotate circle until it faces (x, y) or touches first obstacle */
+/* rotate circle until it faces vector or touches first obstacle */
 /* does not actually move circle, but updates rotation values */
-function rotateto(circle, x, y) {
+function rotateto(circle, angle, length) {
     var point = circle.point;
 
     var pointangle = Math.atan2(circle.y - point.y, circle.x - point.x);
-    var moveangle = Math.atan2(y - circle.y, x - circle.x);
-    var movedist = distance(x, y, circle.x, circle.y);
+    var moveangle = angle;
+    var movedist = length;
     
     var dist = angledistance(moveangle, pointangle);
     var rotangle;
@@ -922,24 +924,22 @@ function anglecloser(angle1, angle, angle2) {
     return (dist1 < dist2) ? angle1 : angle2;
 }
 
-/* get next text of "circle" towards point (x, y) */
-function stateto(circle, x, y) {
-    var moveangle = Math.atan2(y - circle.y, x - circle.x);
-    var maxdist = distance(circle.x, circle.y, x, y);
+/* update "circle" to its next state */
+function stateto(circle, angle, length) {
     /* handle two obstacle collisions */
     if (circle.point != 0 && circle.point2 != 0) {
         /* two points */
         var angle1 = circlepointangle(circle, circle.point);
         var angle2 = circlepointangle(circle, circle.point2);
         
-        if (between(angle1, moveangle, angle2)) {
+        if (between(angle1, angle, angle2)) {
             /* can't move */
-            circle.movedist = maxdist;
+            circle.movedist = length;
             circle.action = "none";
             return;
         }
         
-        var closer = anglecloser(angle1, moveangle, angle2);
+        var closer = anglecloser(angle1, angle, angle2);
         if (closer == angle1) {
             /* rotate by first point */
         } else {
@@ -954,14 +954,14 @@ function stateto(circle, x, y) {
         var angle1 = circlelineangle(circle, circle.line);
         var angle2 = circlelineangle(circle, circle.line2);
         
-        if (between(angle1, moveangle, angle2)) {
+        if (between(angle1, angle, angle2)) {
             /* can't move */
-            circle.movedist = maxdist;
+            circle.movedist = length;
             circle.action = "none";
             return;
         }
         
-        var closer = anglecloser(angle1, moveangle, angle2);
+        var closer = anglecloser(angle1, angle, angle2);
         if (closer == angle1) {
             /* move by first line */
         } else {
@@ -976,14 +976,14 @@ function stateto(circle, x, y) {
         var angle1 = circlelineangle(circle, circle.line);
         var angle2 = circlepointangle(circle, circle.point);
         
-        if (between(angle1, moveangle, angle2)) {
+        if (between(angle1, angle, angle2)) {
             /* can't move */
-            circle.movedist = maxdist;
+            circle.movedist = length;
             circle.action = "none";
             return;
         }
         
-        var closer = anglecloser(angle1, moveangle, angle2);
+        var closer = anglecloser(angle1, angle, angle2);
            if (closer == angle1) {
             /* move by line */
             circle.point2 = circle.point;
@@ -996,9 +996,9 @@ function stateto(circle, x, y) {
     }
     
     if (circle.point == 0) {
-        moveto(circle, x, y);
+        moveto(circle, angle, length);
     } else {
-        rotateto(circle, x, y);
+        rotateto(circle, angle, length);
     }
 }
 
@@ -1084,10 +1084,7 @@ function apply(circle, angle, length) {
         var prevx = circle.x;
         var prevy = circle.y;
         
-        var tox = circle.x + maxdist * Math.cos(angle);
-        var toy = circle.y + maxdist * Math.sin(angle);
-        
-        stateto(circle, tox, toy);
+        stateto(circle, angle, maxdist);
         maxdist -= circle.movedist;
         
         nextstate(circle);
