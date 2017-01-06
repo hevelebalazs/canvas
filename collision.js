@@ -86,36 +86,6 @@ function drawcircle(circle) {
     context.fillStyle = "#39ff14"
     context.strokeStyle = "#39ff14";
     
-    if (circle.action == "move") {
-        /* draw connecting line */     
-        context.lineWidth = 2 * circle.r;
-        context.beginPath();
-        context.moveTo(circle.x, circle.y);
-        context.lineTo(circle.hitx, circle.hity);
-        context.stroke();
-        
-        /* draw first hit point */
-        context.beginPath();
-        context.arc(circle.hitx, circle.hity, circle.r, 0, 2 * Math.PI);
-        context.fill();
-    }
-    if (circle.action == "rotate") {
-        /* draw connecting arc */
-        context.beginPath();
-        
-        if (!circle.clockwise) {
-            context.arc(circle.point.x, circle.point.y, 2 * circle.r, circle.pointangle, circle.rotangle);
-        } else {
-            context.arc(circle.point.x, circle.point.y, 2 * circle.r, circle.rotangle, circle.pointangle);
-        }
-        context.fill();
-        
-        /* draw final circle */
-        context.beginPath();
-        context.arc(circle.rotx, circle.roty, circle.r, 0, 2 * Math.PI);
-        context.fill();
-    }
-    
     /* draw circle */
     context.beginPath();
     context.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
@@ -434,8 +404,7 @@ function linedist(circle, line) {
     return dist;
 }
 
-/* move "circle" by force */
-/* does not actually move circle, but updates movement values */
+/* move "circle" by force or until first obstacle */
 function moveto(circle, angle, length) {
     /* init movement */
     circle.tox = circle.x + length * Math.cos(angle);
@@ -603,6 +572,9 @@ function moveto(circle, angle, length) {
     }
     
     circle.movedist = movex * distance(circle.x, circle.y, circle.hitx, circle.hity);
+    
+    circle.x = circle.hitx;
+    circle.y = circle.hity;
 }
 
 /* get how much circle can rotate before colliding with point (x, y) */
@@ -884,6 +856,9 @@ function rotateto(circle, angle, length) {
     circle.roty = point.y + circle.r * Math.sin(circle.rotangle);
     
     circle.movedist = 2 * mindist * circle.r * circle.r;
+    
+    circle.x = circle.rotx;
+    circle.y = circle.roty;
 }
 
 function circlepointangle(circle, point) {
@@ -1002,19 +977,6 @@ function stateto(circle, angle, length) {
     }
 }
 
-/* update "circle" to its next state */
-function nextstate(circle) {
-    if (circle.action == "move") {
-        circle.x = circle.hitx;
-        circle.y = circle.hity;
-    }
-    
-    if (circle.action == "rotate") {
-        circle.x = circle.rotx;
-        circle.y = circle.roty;
-    }
-}
-
 function checkpoint(circle, x, y) {
     var dist = distance(circle.x, circle.y, x, y);
     
@@ -1086,8 +1048,6 @@ function apply(circle, angle, length) {
         
         stateto(circle, angle, maxdist);
         maxdist -= circle.movedist;
-        
-        nextstate(circle);
         
         if (circle.x == prevx && circle.y == prevy) break;
         if (maxdist <= 0) break;
