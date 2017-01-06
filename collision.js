@@ -9,7 +9,6 @@ var mousex = 0, mousey = 0;
 var circle = {
     x: -5, y: 2,
     r: 1,
-    action: "nothing",
     movedist: 0,      /* how much circle moves */
     /* move */
     line: 0,          /* touching line */
@@ -534,9 +533,6 @@ function moveto(circle, angle, length) {
         }
     }
     
-        
-    circle.action = "move";
-    
     var hitx = circle.x + mindist * Math.cos(circle.angle);
     var hity = circle.y + mindist * Math.sin(circle.angle);
     
@@ -729,8 +725,6 @@ function rotateto(circle, angle, length) {
     var clockwise = (dist <= Math.PI);
     circle.clockwise = clockwise;
     
-    circle.action = "rotate";
-    
     var mindist;
     /* find closest obstacle */
     if (!clockwise) mindist = angledistance(pointangle, rotangle);
@@ -876,7 +870,6 @@ function stateto(circle, angle, length) {
         if (between(angle1, angle, angle2)) {
             /* can't move */
             circle.movedist = length;
-            circle.action = "none";
             return;
         }
         
@@ -898,7 +891,6 @@ function stateto(circle, angle, length) {
         if (between(angle1, angle, angle2)) {
             /* can't move */
             circle.movedist = length;
-            circle.action = "none";
             return;
         }
         
@@ -920,7 +912,6 @@ function stateto(circle, angle, length) {
         if (between(angle1, angle, angle2)) {
             /* can't move */
             circle.movedist = length;
-            circle.action = "none";
             return;
         }
         
