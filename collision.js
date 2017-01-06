@@ -716,16 +716,26 @@ function linerot(circle, line) {
         angle2 = Math.atan2(y2 - point.y, x2 - point.x);
     }
     
-    var endpoint1 = (line.x1 == point.x) && (line.y1 == point.y);
-    var endpoint2 = (line.x2 == point.x) && (line.y2 == point.y);
-    
-    if (endpoint1 || endpoint2) {
-        /* endpoint */
-        angle1 = angle + Math.PI;
-        angle2 = angle + Math.PI;
+    if (line.x1 == point.x && line.y1 == point.y) {
+        /* endpoint 1 */
+        var angle;
+        if (circle.clockwise) angle = lineangle + Math.PI / 2;
+        else angle = lineangle - Math.PI / 2;
         
-        angle1 = -angle1;
-        angle2 = -angle2;
+        var dist = angledistabs(circle.pointangle, angle);
+        
+        return Math.min(circle.rotdist, dist);
+    }
+    
+    if (line.x2 == point.x && line.y2 == point.y) {
+        /* endpoint 2 */
+        var angle;
+        if (circle.clockwise) angle = lineangle - Math.PI / 2;
+        else angle = lineangle + Math.PI / 2;
+        
+        var dist = angledistabs(circle.pointangle, angle);
+        
+        return Math.min(circle.rotdist, dist);
     }
     
     /* find closest of two angles */
@@ -748,6 +758,7 @@ function rotateto(circle, x, y) {
 
     var pointangle = Math.atan2(circle.y - point.y, circle.x - point.x);
     var moveangle = Math.atan2(y - circle.y, x - circle.x);
+    var movedist = distance(x, y, circle.x, circle.y);
     
     var dist = angledistance(moveangle, pointangle);
     var rotangle;
@@ -777,15 +788,22 @@ function rotateto(circle, x, y) {
     
     circle.action = "rotate";
     
-    circle.rotx = point.x + circle.r * Math.cos(rotangle);
-    circle.roty = point.y + circle.r * Math.sin(rotangle);
-    
     var mindist;
     /* find closest obstacle */
     if (!clockwise) mindist = angledistance(pointangle, rotangle);
     else mindist = angledistance(rotangle, pointangle);
     
-    circle.rotdist = mindist / 10;
+    /* distance to go */
+    var godist = mindist;
+    
+    var arc = mindist * circle.r;
+   
+    if (arc == 0.0) return 0.0;
+    if (movedist < arc) circle.rotdist = movedist / circle.r;
+    else circle.rotdist = mindist;
+    
+    mindist = circle.rotdist;
+    
     /* find first colliding point */
     var minpoint = 0;
     var i;
@@ -825,7 +843,7 @@ function rotateto(circle, x, y) {
         }
     }
     
-    if (mindist == circle.rotdist) {
+    if (godist == mindist) {
         /* full rotation */
         circle.line   = 0;
         circle.line2  = 0;
@@ -1061,7 +1079,8 @@ function checkline(circle, i) {
 function apply(circle, angle, length) {
     var maxdist = length;
 
-    while (true) {
+    var count;
+    for (count = 0; count < 100; ++count) {
         var prevx = circle.x;
         var prevy = circle.y;
         
@@ -1077,8 +1096,13 @@ function apply(circle, angle, length) {
         if (maxdist <= 0) break;
     }
     
-    var i;
-    for (i = 0; i < lines.length; ++i) checkline(circle, i);
+    if (circle.point == 0) {
+        circle.point2 = 0;
+    }
+    
+    if (circle.line == 0) {
+        circle.line2 = 0;
+    }
     
     return circle;
 }
@@ -1094,7 +1118,34 @@ function update() {
     moveangle = mouseangle;
     movedist = maxdist;
     
+    var line = circle.line;
+    var line2 = circle.line2;
+    var point = circle.point;
+    var point2 = circle.point2;
+    
     apply(circle, moveangle, movedist);
+    
+    var lineeq = (line == circle.line && line2 == circle.line2);
+    var pointeq = (point == circle.point && point2 == circle.point2);
+    
+    if (!lineeq || !pointeq) {
+        if (circle.point == 0 && circle.line == 0) {
+            /* no point, no line */
+            console.log("Free");
+        } else if (circle.point == 0) {
+            /* at least one line, no point */
+            if (circle.line2 != 0) console.log("Two lines", circle.line, circle.line2);
+            else console.log("One line", circle.line);
+        } else if (circle.line == 0) {
+            /* at least one point, no line */
+            if (circle.point2 != 0) console.log("Two points", circle.point, circle.point2);
+            else console.log("One point", circle.point);
+        } else {
+            /* point and line */
+            console.log("One point one line", circle.point, circle.line);
+        }
+    }
+    
     draw();
     
     timer = setTimeout(update, tick);   
