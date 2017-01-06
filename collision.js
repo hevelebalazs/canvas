@@ -22,7 +22,6 @@ var circle = {
     /* rotate */
     point: 0,         /* rotation point */
     point2 : 0,       /* second touching point */
-    rotx: 0, roty: 0, /* center after rotation */
     rotdist: 0        /* rotation distance */
 };
 
@@ -821,14 +820,11 @@ function rotateto(circle, angle, length) {
     } else {
         circle.rotangle = pointangle + mindist;
     }
-    
-    circle.rotx = point.x + circle.r * Math.cos(circle.rotangle);
-    circle.roty = point.y + circle.r * Math.sin(circle.rotangle);
-    
+
     circle.movedist = 2 * mindist * circle.r * circle.r;
     
-    circle.x = circle.rotx;
-    circle.y = circle.roty;
+    circle.x = point.x + circle.r * Math.cos(circle.rotangle);
+    circle.y = point.y + circle.r * Math.sin(circle.rotangle);
 }
 
 function circlepointangle(circle, point) {
