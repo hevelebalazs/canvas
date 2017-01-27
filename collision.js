@@ -21,7 +21,7 @@ var circle = {
     /* rotate */
     point: 0,         /* rotation point */
     point2 : 0,       /* second touching point */
-    rotdist: 0        /* rotation distance */
+    rotdist: 0,       /* rotation distance */
 };
 
 var last;
@@ -34,8 +34,8 @@ var speed = 5;
 var lines = [{ x1:  -5, y1: -1,  x2:  5, y2:  1 },
              { x1:   5, y1:  1,  x2:  0, y2: -3 },
              { x1: -10, y1: -5,  x2: -5, y2:  0 },
-             { x1:  -5, y1:  5,  x2:  5, y2:  6 },
-             { x1:  -5, y1:  6,  x2:  5, y2:  7 }
+             { x1:  -5, y1:  5,  x2:  5, y2:  5 },
+             { x1:  -5, y1:  6,  x2:  5, y2:  6 }
             ];
             
 function fillcircle(circle) {
@@ -319,6 +319,58 @@ function lineexist(line, x, y) {
 
 /* how much circle can move before hitting line? */
 /* if there is no collision, circle.length will be returned */
+function linedist2(circle, line) {
+    if (circle.length == 0.0) return 0.0;
+    
+    /* calculate two possible collision points on the circle */
+    var lineangle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
+    
+    var angle1 = lineangle + Math.PI / 2;
+    var angle2 = lineangle - Math.PI / 2;
+    
+    var x1 = circle.r * Math.cos(angle1);
+    var y1 = circle.r * Math.sin(angle1);
+    
+    var x2 = circle.r * Math.cos(angle2);
+    var y2 = circle.r * Math.sin(angle2);
+
+    /* point 1 */
+    var dist1 = circle.length;
+    
+    var hitx1 = circle.x + x1;
+    var hity1 = circle.y + y1;
+    var hitx2 = circle.tox + x1;
+    var hity2 = circle.toy + y1;
+    var cross1 = linecross(hitx1, hity1, hitx2, hity2, line.x1, line.y1, line.x2, line.y2);
+    
+    if (cross1) {
+        var hitx = intersectionx(hitx1, hity1, hitx2, hity2, line.x1, line.y1, line.x2, line.y2);
+        var hity = intersectiony(hitx1, hity1, hitx2, hity2, line.x1, line.y1, line.x2, line.y2);
+        
+        dist1 = distance(hitx1, hity1, hitx, hity);
+    }
+    
+    /* point 2 */
+    var dist2 = circle.length;
+    
+    hitx1 = circle.x + x2;
+    hity1 = circle.y + y2;
+    hitx2 = circle.tox + x2;
+    hity2 = circle.toy + y2;
+    var cross2 = linecross(hitx1, hity1, hitx2, hity2, line.x1, line.y1, line.x2, line.y2);
+    
+    if (cross2) {
+        var hitx = intersectionx(hitx1, hity1, hitx2, hity2, line.x1, line.y1, line.x2, line.y2);
+        var hity = intersectiony(hitx1, hity1, hitx2, hity2, line.x1, line.y1, line.x2, line.y2);
+        
+        dist2 = distance(hitx1, hity1, hitx, hity);
+    }
+    
+    return (dist1 < dist2) ? dist1: dist2;
+}
+
+/* how much circle can move before hitting line? */
+/* if there is no collision, circle.length will be returned */
 function linedist(circle, line) {
     if (circle.length == 0.0) return 0.0;
     /* is there a collision? */
@@ -503,7 +555,7 @@ function moveto(circle, angle, length) {
             continue;
         }
         
-        var dist = linedist(circle, line);
+        var dist = linedist2(circle, line);
         
         if (dist < mindist) {
             mindist = dist;
