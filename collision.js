@@ -4,6 +4,8 @@ var coord;     /* coordinate/pixel ratio */
 var tick = 10; /* milliseconds between two consecutive frames */
 var timer = 0; /* reference to update timer */
 
+var range = 5; /* how far do you see? */
+
 var mousex = 0, mousey = 0;
 
 var circle = {
@@ -62,7 +64,8 @@ function drawcircle(circle) {
 function draw() {
     context.restore();
     /* fill canvas */
-    context.fillStyle = "#FFFFCC";
+    //context.fillStyle = "#FFFFCC";
+    context.fillStyle = "#000000";
     context.rect(0, 0, canvas.width, canvas.height);
     context.fill();
     
@@ -71,11 +74,18 @@ function draw() {
     context.translate(canvas.width / 2, canvas.height / 2);
     context.scale(coord, coord);
     
+    /* draw line of sight */
+    context.strokeStyle = "#bbffbb";
+    context.fillStyle = "#bbffbb";
+    context.lineWidth = 2 / coord;
+    drawsight(circle.x, circle.y, range);
+    
     /* draw circle */
     fillcircle(circle);
     drawcircle(circle);
     
     /* draw lines */
+    /*
     context.lineWidth = 2 / coord;
     for (i = 0; i < lines.length; ++i) {
         var line = lines[i];
@@ -86,6 +96,7 @@ function draw() {
         context.lineTo(line.x2, line.y2);
         context.stroke();
     }
+    */
 }
 
 /* do lines equal? */
@@ -1138,12 +1149,12 @@ function mouseclick() {
 
 function mousescroll(event) {
     
-    var phi = (Math.sqrt(5) + 1) / 2;
+    var rate = 1.10;
     
     if (event.deltaY < 0) {
-        if (tick < 640) tick *= phi;
+        if (range < 20) range *= rate;
     } else {
-        if (tick > 10) tick /= phi;
+        if (range > 2) range /= rate;
     }
 }
 
@@ -1166,6 +1177,8 @@ function resize() {
 }
 
 function init() {
+    alert("Circle follows mouse.\nScroll to change visibility range.");
+    
     canvas = document.getElementById("canvas");
     context = canvas.getContext("2d");
     
@@ -1175,7 +1188,7 @@ function init() {
     update();
 }
 
-alert("circle follows mouse \n CLICK to PAUSE/PLAY \n SCROLL to add/remove LAG");
+// alert("circle follows mouse \n CLICK to PAUSE/PLAY \n SCROLL to add/remove LAG");
 window.onload = init;
 window.onresize = resize;
 window.onmousemove = mousemove;
