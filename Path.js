@@ -79,6 +79,18 @@ function BuildingNode(building) {
     return node;
 }
 
+function PushRoad(path, road) {
+    var node = RoadNode(road);
+    
+    PushNode(path, node);
+}
+
+function PushIntersection(path, intersection) {
+    var node = IntersectionNode(intersection);
+    
+    PushNode(path, node);
+}
+
 function PushBuilding(path, building) {
     var node = BuildingNode(building);
     
@@ -289,6 +301,9 @@ function ConnectElems(map, elemStart, elemEnd, helper) {
         
     var finished = false;
     
+    var endConnectRoad = null;
+    var startConnectRoad = null;
+    
     if (elemStart.type == MapElemBuilding && elemEnd.type == MapElemBuilding) {
         var buildingStart = elemStart.building;
         var buildingEnd = elemEnd.building;
@@ -315,23 +330,79 @@ function ConnectElems(map, elemStart, elemEnd, helper) {
     if (!finished) {
         var roadElemStart = MapElem();
         if (elemStart.type == MapElemBuilding) {
-            PushFromBuildingToRoadElem(path, elemStart.building);
+            var startBuilding = elemStart.building;
             
-            roadElemStart = GetConnectRoadElem(elemStart.building);
+            PushFromBuildingToRoadElem(path, startBuilding);
+            CopyMapElem(roadElemStart, GetConnectRoadElem(startBuilding));
+            
+            if (roadElemStart.type == MapElemRoad) startConnectRoad = roadElemStart.road;
         }
         else {
-            roadElemStart = elemStart;
+            CopyMapElem(roadElemStart, elemStart);
         }
         
         var roadElemEnd = MapElem();
         if (elemEnd.type == MapElemBuilding) {
-            roadElemEnd = GetConnectRoadElem(elemEnd.building);
+            var endBuilding = elemEnd.building;
+            
+            CopyMapElem(roadElemEnd, GetConnectRoadElem(endBuilding));
+            
+            if (roadElemEnd.type == MapElemRoad) endConnectRoad = roadElemEnd.road;
         }
         else {
-            roadElemEnd = elemEnd;
+            CopyMapElem(roadElemEnd, elemEnd);
         }
         
+        if (startConnectRoad != null && endConnectRoad != null && startConnectRoad == endConnectRoad) {
+            var startLaneIndex = LaneIndex(startConnectRoad, elemStart.building.connectPointFarShow);
+            var endLaneIndex = LaneIndex(endConnectRoad, elemEnd.building.connectPointFarShow);
+            
+            if (startLaneIndex == endLaneIndex) {
+                var startDistance = DistanceOnLane(startConnectRoad, startLaneIndex, elemStart.building.connectPointFarShow);
+                var endDistance = DistanceOnLane(endConnectRoad, endLaneIndex, elemEnd.building.connectPointFarShow);
+                
+                if (startDistance < endDistance) {
+                    startConnectRoad = null;
+                    endConnectRoad = null;
+                }
+            }
+        }
+        
+        if (startConnectRoad != null) {
+            var startBuilding = elemStart.building;
+            
+            var laneIndex = LaneIndex(startConnectRoad, startBuilding.connectPointFarShow);
+            
+            var startIntersection = null;
+            if (laneIndex == 1)       startIntersection = startConnectRoad.intersection2;
+            else if (laneIndex == -1) startIntersection = startConnectRoad.intersection1;
+            
+            if (startIntersection != null) {
+                roadElemStart.type = MapElemIntersection;
+                roadElemStart.intersection = startIntersection;
+            }
+        }
+        
+        if (endConnectRoad != null) {
+            var endBuilding = elemEnd.building;
+            
+            var laneIndex = LaneIndex(endConnectRoad, endBuilding.connectPointFarShow);
+            
+            var endIntersection = null;
+            if (laneIndex == 1)       endIntersection = endConnectRoad.intersection1;
+            else if (laneIndex == -1) endIntersection = endConnectRoad.intersection2;
+            
+            if (endIntersection != null) {
+                roadElemEnd.type = MapElemIntersection;
+                roadElemEnd.intersection = endIntersection;
+            }
+        }
+        
+        if (startConnectRoad != null) PushRoad(path, startConnectRoad);
+        
         PushConnectRoadElems(path, map, roadElemStart, roadElemEnd, helper);
+        
+        if (endConnectRoad != null) PushRoad(path, endConnectRoad);
         
         if (elemEnd.type == MapElemBuilding) {
             PushFromRoadElemToBuilding(path, elemEnd.building);
@@ -487,8 +558,27 @@ function EndFromBuildingToIntersection(point, building, intersection) {
 
 function NextFromRoadToBuilding(startPoint, road, building) {
     var result = DirectedPoint();
-    result.position = building.connectPointFarShow;
-    result.direction = PointDirection(building.connectPointFarShow, building.connectPointClose);
+    
+    var onRoadSide = IsPointOnRoadSide(startPoint.position, road);
+    
+    if (onRoadSide) {
+        var laneIndex = LaneIndex(road, startPoint.position);
+        result = TurnPointToLane(road, laneIndex, startPoint.position);
+    }
+    else {
+        var laneIndex = LaneIndex(road, building.connectPointFarShow);
+        var turnPoint = TurnPointFromLane(road, laneIndex, building.connectPointFarShow);
+        var turnPointDistance = DistanceOnLane(road, laneIndex, turnPoint.position);
+        var startDistance = DistanceOnLane(road, laneIndex, startPoint.position);
+        
+        if (startDistance > turnPointDistance || PointEqual(startPoint.position, turnPoint.position)) {
+            CopyPoint(result.position, building.connectPointFarShow);
+            CopyPoint(result.direction, PointDirection(building.connectPointFarShow, building.connectPointClose));
+        }
+        else {
+            CopyDirectedPoint(result, turnPoint);
+        }
+    }
     
     return result;
 }
@@ -501,13 +591,17 @@ function EndFromRoadToBuilding(point, road, building) {
 function NextFromRoadToIntersection(startPoint, road, intersection) {
     var result = DirectedPoint();
     
-    if (intersection == road.intersection1) {
-        result.position = road.endPoint1;
-        result.direction = PointDirection(road.endPoint2, road.endPoint1);
+    var onRoadSide = IsPointOnRoadSide(startPoint.position, road);
+    
+    if (onRoadSide) {
+        var laneIndex = LaneIndex(road, startPoint.position);
+        result = TurnPointToLane(road, laneIndex, startPoint.position);
+    }
+    else if (intersection == road.intersection1) {
+        result = RoadLeavePoint(road, 1);
     }
     else if (intersection == road.intersection2) {
-        result.position = road.endPoint2;
-        result.direction = PointDirection(road.endPoint1, road.endPoint2);
+        result = RoadLeavePoint(road, 2);
     }
     else {
         result.position = intersection.coordinate;
@@ -519,9 +613,12 @@ function NextFromRoadToIntersection(startPoint, road, intersection) {
 function EndFromRoadToIntersection(point, road, intersection) {
     var result = false;
     
-    if (intersection == road.intersection1) result = PointEqual(point.position, road.endPoint1);
-    else if (intersection == road.intersection2) result = PointEqual(point.position, road.endPoint2);
-    else result = PointEqual(point.position, intersection.coordinate);
+    var endPoint = Point();
+    if (intersection == road.intersection1)      endPoint = RoadLeavePoint(road, 1).position;
+    else if (intersection == road.intersection2) endPoint = RoadLeavePoint(road, 2).position;
+    else                                         endPoint = intersection.coordinate;
+    
+    result = PointEqual(point.position, endPoint);
     
     return result;
 }
@@ -544,12 +641,10 @@ function NextFromIntersectionToRoad(point, intersection, road) {
     var result = DirectedPoint();
     
     if (road.intersection1 == intersection) {
-        result.position = road.endPoint1;
-        result.direction = PointDirection(road.endPoint1, road.endPoint2);
+        result = RoadEnterPoint(road, 1);
     }
     else if (road.intersection2 == intersection) {
-        result.position = road.endPoint2;
-        result.direction = PointDirection(road.endPoint2, road.endPoint1);
+        result = RoadEnterPoint(road, 2);
     }
     else {
         result.position = intersection.coordinate;
@@ -561,9 +656,12 @@ function NextFromIntersectionToRoad(point, intersection, road) {
 function EndFromIntersectionToRoad(point, intersection, road) {
     var result = false;
     
-    if (road.intersection1 == intersection) result = PointEqual(point.position, road.endPoint1);
-    else if (road.intersection2 == intersection) result = PointEqual(point.position, road.endPoint2);
-    else result = PointEqual(point.position, intersection.coordinate);
+    var endPoint = Point();
+    if (road.intersection1 == intersection)      endPoint = RoadEnterPoint(road, 1).position;
+    else if (road.intersection2 == intersection) endPoint = RoadEnterPoint(road, 2).position;
+    else                                         endPoint = intersection.coordinate;
+    
+    result = PointEqual(point.position, endPoint);
     
     return result;
 }

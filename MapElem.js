@@ -1,7 +1,8 @@
-var MapElemNone         = 0;
-var MapElemRoad         = 1;
-var MapElemIntersection = 2;
-var MapElemBuilding     = 3;
+var MapElemNone              = 0;
+var MapElemRoad              = 1;
+var MapElemIntersection      = 2;
+var MapElemBuilding          = 3;
+var MapElemBuildingConnector = 4;
 
 function MapElem() {
     return {
@@ -32,4 +33,11 @@ function MapElemEqual(elem1, elem2) {
         && elem1.building == elem2.building) return true;
         
     return false;
+}
+
+function HighlightMapElem(renderer, mapElem, color) {
+    if (mapElem.type == MapElemBuilding)               HighlightBuilding(renderer, mapElem.building, color);
+    else if (mapElem.type == MapElemBuildingConnector) HighlightBuildingConnector(renderer, mapElem.building, color);
+    else if (mapElem.type == MapElemIntersection)      HighlightIntersection(renderer, mapElem.intersection, color);
+    else if (mapElem.type == MapElemRoad)              HighlightRoad(renderer, mapElem.road, color);
 }

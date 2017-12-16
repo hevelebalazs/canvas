@@ -25,31 +25,61 @@ function MouseMove(event) {
 }
 
 function MouseClick(event) {
-    globalGameState.selectedBuilding = globalGameState.highlightedBuilding;
 }
 
 function KeyDown(event) {
     var key = event.key;
 
     var playerHuman = globalGameState.playerHuman;
-    if (key == 'w')      playerHuman.moveUp    = true;
-    else if (key == 's') playerHuman.moveDown  = true;
-    else if (key == 'a') playerHuman.moveLeft  = true;
-    else if (key == 'd') playerHuman.moveRight = true;
+    var playerVehicle = globalGameState.playerVehicle;
+    if (key == 'w') {
+        playerHuman.moveUp = true;
+        playerVehicle.engineForce = playerVehicle.maxEngineForce;
+    }
+    else if (key == 's') {
+        playerHuman.moveDown = true;
+        playerVehicle.engineForce = -playerVehicle.breakForce;
+    }
+    else if (key == 'a') {
+        playerHuman.moveLeft = true;
+        playerVehicle.turnDirection = -1.0;
+    }
+    else if (key == 'd') {
+        playerHuman.moveRight = true;
+        playerVehicle.turnDirection = 1.0;
+    }
+    else if (key == 'f') {
+        TogglePlayerVehicle(globalGameState);
+    }
 }
 
 function KeyUp(event) {
     var key = event.key;
 
     var playerHuman = globalGameState.playerHuman;
-    if (key == 'w')      playerHuman.moveUp    = false;
-    else if (key == 's') playerHuman.moveDown  = false;
-    else if (key == 'a') playerHuman.moveLeft  = false;
-    else if (key == 'd') playerHuman.moveRight = false;
+    var playerVehicle = globalGameState.playerVehicle;
+    if (key == 'w') {
+        playerHuman.moveUp = false;
+        playerVehicle.engineForce = 0.0;
+    }
+    else if (key == 's') {
+        playerHuman.moveDown = false;
+        playerVehicle.engineForce = 0.0;
+    }
+    else if (key == 'a') {
+        playerHuman.moveLeft = false;
+        playerVehicle.turnDirection = 0.0;
+    }
+    else if (key == 'd') {
+        playerHuman.moveRight = false;
+        playerVehicle.turnDirection = 0.0;
+    }
 }
 
 function Update() {
     var mousePosition = Point2(globalMouseX, globalMouseY);
+    mousePosition = PixelToCoord(globalGameState.renderer.camera, mousePosition);
+    
     GameUpdate(globalGameState, globalTargetFrameS, mousePosition);
 
     Draw();

@@ -40,10 +40,6 @@ function CopyBuildArea(to, from) {
     to.bottom = from.bottom;
 }
 
-function RandomBetween(left, right) {
-    return (left) + ((right - left) * Math.random());
-}
-
 function GenerateBuildings(map, fromArea, buildingPadding, minBuildingSide, maxBuildingSide) {
     var area = BuildArea();
     CopyBuildArea(area, fromArea);
@@ -154,6 +150,8 @@ function ConnectIntersections(intersection1, intersection2, road, roadWidth) {
 }
 
 function CalculateTreeHeight(building) {
+    if (building.connectTreeHeight > 0) return;
+    
     if (building.connectElem.type == MapElemBuilding) {
         var connectBuilding = building.connectElem.building;
         
@@ -164,6 +162,40 @@ function CalculateTreeHeight(building) {
     else {
         building.connectTreeHeight = 1;
     }
+}
+
+function ReindexRoad(road, oldIntersection, newIntersection) {
+    if (road.intersection1 == oldIntersection) road.intersection1 = newIntersection;
+    if (road.intersection2 == oldIntersection) road.intersection2 = newIntersection;
+}
+
+function RemoveIntersection(map, intersection) {
+    var oldIntersection = map.intersections[map.intersectionCount - 1];
+    map.intersectionCount--;
+    
+    CopyIntersection(intersection, oldIntersection);
+    
+    if (intersection.leftRoad)   ReindexRoad(intersection.leftRoad,   oldIntersection, intersection);
+    if (intersection.rightRoad)  ReindexRoad(intersection.rightRoad,  oldIntersection, intersection);
+    if (intersection.topRoad)    ReindexRoad(intersection.topRoad,    oldIntersection, intersection);
+    if (intersection.bottomRoad) ReindexRoad(intersection.bottomRoad, oldIntersection, intersection);
+}
+
+function ReindexIntersection(intersection, oldRoad, road) {
+    if (intersection.leftRoad   == oldRoad) intersection.leftRoad   = road;
+    if (intersection.rightRoad  == oldRoad) intersection.rightRoad  = road;
+    if (intersection.topRoad    == oldRoad) intersection.topRoad    = road;
+    if (intersection.bottomRoad == oldRoad) intersection.bottomRoad = road;
+}
+
+function RemoveRoad(map, road) {
+    var oldRoad = map.roads[map.roadCount - 1];
+    map.roadCount--;
+    
+    CopyRoad(road, oldRoad);
+    
+    if (road.intersection1) ReindexIntersection(road.intersection1, oldRoad, road);
+    if (road.intersection2) ReindexIntersection(road.intersection2, oldRoad, road);
 }
 
 function CreateGridMap(width, height, intersectionDistance) {
@@ -371,59 +403,55 @@ function CreateGridMap(width, height, intersectionDistance) {
         GenerateBuildings(map, buildAreas[i], buildingPadding, intersectionDistance * 0.25, intersectionDistance * 1.0);
     }
     
-    var realIntersectionCount = 0;
-    for (var i = 0; i < intersectionCount; ++i) {
-        var oldIntersection = map.intersections[i];
-        var newIntersection = map.intersections[realIntersectionCount];
-        var isIntersectionReal = false;
+    var i = 0;
+    while (i < map.intersectionCount) {
+        var intersection = map.intersections[i];
+        var roadCount = 0;
         
-        if (oldIntersection.leftRoad) {
-            if (oldIntersection.leftRoad.intersection1 == oldIntersection) {
-                oldIntersection.leftRoad.interesction1 = newIntersection;
-            }
-            else {
-                oldIntersection.leftRoad.intersection2 = newIntersection;
-            }
-            isIntersectionReal = true;
+        if (intersection.leftRoad)   roadCount++;
+        if (intersection.rightRoad)  roadCount++;
+        if (intersection.topRoad)    roadCount++;
+        if (intersection.bottomRoad) roadCount++;
+        
+        if (roadCount == 0) {
+            RemoveIntersection(map, intersection);
         }
-        
-        if (oldIntersection.rightRoad) {
-            if (oldIntersection.rightRoad.intersection1 == oldIntersection) {
-                oldIntersection.rightRoad.intersection1 = newIntersection;
-            }
-            else {
-                oldIntersection.rightRoad.intersection2 = newIntersection;
-            }
-            isIntersectionReal = true;
+        else if (roadCount == 2 && intersection.leftRoad != null && intersection.rightRoad != null) {
+            var leftRoad = intersection.leftRoad;
+            var rightRoad = intersection.rightRoad;
+            var leftIntersection = null;
+            var rightIntersection = null;
+            
+            if (leftRoad.intersection1 == intersection) leftIntersection = leftRoad.intersection2;
+            else leftIntersection = leftRoad.intersection1;
+            
+            if (rightRoad.intersection1 == intersection) rightIntersection = rightRoad.intersection2;
+            else rightIntersection = rightRoad.intersection1;
+            
+            ConnectIntersections(leftIntersection, rightIntersection, rightRoad, roadWidth);
+            RemoveRoad(map, leftRoad);
+            RemoveIntersection(map, intersection);
         }
-        
-        if (oldIntersection.topRoad) {
-            if (oldIntersection.topRoad.intersection1 == oldIntersection) {
-                oldIntersection.topRoad.intersection1 = newIntersection;
-            }
-            else {
-                oldIntersection.topRoad.intersection2 = newIntersection;
-            }
-            isIntersectionReal = true;
+        else if (roadCount == 2 && intersection.topRoad != null && intersection.bottomRoad != null) {
+            var topRoad = intersection.topRoad;
+            var bottomRoad = intersection.bottomRoad;
+            var topIntersection = null;
+            var bottomIntersection = null;
+            
+            if (topRoad.intersection1 == intersection) topIntersection = topRoad.intersection2;
+            else topIntersection = topRoad.intersection1;
+            
+            if (bottomRoad.intersection1 == intersection) bottomIntersection = bottomRoad.intersection2;
+            else bottomIntersection = bottomRoad.intersection2;
+            
+            ConnectIntersections(topIntersection, bottomIntersection, bottomRoad, roadWidth);
+            RemoveRoad(map, topRoad);
+            RemoveIntersection(map, intersection);
         }
-        
-        if (oldIntersection.bottomRoad) {
-            if (oldIntersection.bottomRoad.intersection1 == oldIntersection) {
-                oldIntersection.bottomRoad.intersection1 = newIntersection;
-            }
-            else {
-                oldIntersection.bottomRoad.intersection2 = newIntersection;
-            }
-            isIntersectionReal = true;
-        }
-        
-        if (isIntersectionReal) {
-            CopyIntersection(newIntersection, oldIntersection);
-            realIntersectionCount++;
+        else {
+            i++;
         }
     }
-    
-    map.intersectionCount = realIntersectionCount;
     
     for (var i = 0; i < map.intersectionCount; ++i) {
         var intersection = map.intersections[i];
@@ -436,6 +464,12 @@ function CreateGridMap(width, height, intersectionDistance) {
     for (var i = 0; i < map.buildingCount; ++i) {
         var building = map.buildings[i];
         
+        building.id = i;
+    }
+    
+    for (var i = 0; i < map.buildingCount; ++i) {
+        var building = map.buildings[i];
+        
         var center = Point();
         center.x = (building.left + building.right) * 0.5;
         center.y = (building.top + building.bottom) * 0.5;
@@ -444,7 +478,7 @@ function CreateGridMap(width, height, intersectionDistance) {
         ConnectBuildingToElem(building, closestElem);
         
         var crossedBuilding = ClosestCrossedBuilding(map, building.connectPointClose, building.connectPointFar, building);
-        if (crossedBuilding) {
+        if (crossedBuilding != null) {
             crossedBuilding.roadAround = true;
             
             var elem = MapElem();

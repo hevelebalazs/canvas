@@ -3,17 +3,36 @@ function GameState() {
         renderer: Renderer(),
         map: Map(),
         
-        selectedBuilding: null,
-        highlightedBuilding: null,
-        
         pathHelper: PathHelper(),
-        buildingPath: Path(),
         
         autoVehicleCount: 100,
         autoVehicles: GenArray(AutoVehicle, 100),
         
-        playerHuman: PlayerHuman()
+        playerHuman: PlayerHuman(),
+        playerVehicle: PlayerVehicle(),
+        
+        isPlayerVehicle: false,
     };
+}
+
+function TogglePlayerVehicle(gameState) {
+    var playerPosition = Point();
+    
+    if (gameState.isPlayerVehicle) CopyPoint(playerPosition, gameState.playerVehicle.vehicle.position);
+    else CopyPoint(playerPosition, gameState.playerHuman.human.position);
+    
+    var playerOnElem = MapElemAtPoint(gameState.map, playerPosition);
+    
+    if (playerOnElem.type == MapElemRoad || playerOnElem.type == MapElemIntersection) {
+        if (gameState.isPlayerVehicle) {
+            gameState.isPlayerVehicle = false;
+            CopyPoint(gameState.playerHuman.human.position, playerPosition);
+        }
+        else {
+            gameState.isPlayerVehicle = true;
+            CopyPoint(gameState.playerVehicle.vehicle.position, playerPosition);
+        }
+    }
 }
 
 function GameInit(gameState, windowWidth, windowHeight) {
@@ -24,6 +43,18 @@ function GameInit(gameState, windowWidth, windowHeight) {
     var intersection = RandomIntersection(gameState.map);
     CopyPoint(playerHuman.human.position, intersection.coordinate);
     playerHuman.human.map = gameState.map;
+    
+    var playerVehicle = gameState.playerVehicle;
+    var vehicle = playerVehicle.vehicle;
+    
+    playerVehicle.maxEngineForce = 1000.0;
+    playerVehicle.breakForce     = 1000.0;
+    playerVehicle.mass           = 200.0;
+    
+    vehicle.angle  = 0.0;
+    vehicle.length = 8.0;
+    vehicle.width  = 5.0;
+    vehicle.color  = Color3(0.0, 0.0, 1.0);
     
     for (var i = 0; i < gameState.autoVehicleCount; ++i) {
         var randomBuilding = RandomBuilding(gameState.map);
@@ -44,7 +75,7 @@ function GameInit(gameState, windowWidth, windowHeight) {
     
     var camera = gameState.renderer.camera;
     
-    camera.zoomSpeed = 10.0;
+    camera.zoomSpeed = 2.0;
     camera.pixelCoordRatio = 10.0;
     camera.screenSize = Point2(windowWidth, windowHeight);
     camera.center = PointProd(0.5, camera.screenSize);
@@ -62,32 +93,65 @@ function GameUpdate(gameState, seconds, mousePosition) {
         UpdateAutoVehicle(autoVehicle, seconds);
     }
     
-    UpdatePlayerHuman(gameState.playerHuman, seconds);
-    
-    gameState.highlightedBuilding = BuildingAtPoint(gameState.map, mousePosition);
-    
-    if (gameState.selectedBuilding && gameState.highlightedBuilding && gameState.selectedBuilding != gameState.highlightedBuilding) {
-        ClearPath(gameState.buildingPath);
+    if (gameState.isPlayerVehicle) {
+        var onElemBefore = MapElemAtPoint(gameState.map, gameState.playerVehicle.vehicle.position);
         
-        var selectedBuildingElem = MapElem();
-        selectedBuildingElem.type = MapElemBuilding;
-        selectedBuildingElem.building = gameState.selectedBuilding;
+        UpdatePlayerVehicle(gameState.playerVehicle, seconds);
         
-        var highlightedBuildingElem = MapElem();
-        highlightedBuildingElem.type = MapElemBuilding;
-        highlightedBuildingElem.building = gameState.highlightedBuilding;
+        var onElemAfter = MapElemAtPoint(gameState.map, gameState.playerVehicle.vehicle.position);
         
-        gameState.buildingPath = ConnectElems(gameState.map, selectedBuildingElem, highlightedBuildingElem, gameState.pathHelper);
+        if (onElemAfter.type == MapElemNone) {
+            TurnPlayerVehicleRed(gameState.playerVehicle, 0.2);
+        }
+        else if (onElemAfter.type == MapElemRoad) {
+            var road = onElemAfter.road;
+            
+            var laneIndex = LaneIndex(road, gameState.playerVehicle.vehicle.position);
+            var laneDirection = LaneDirection(road, laneIndex);
+            
+            var vehicleDirection = RotationVector(gameState.playerVehicle.vehicle.angle);
+            var angleCos = DotProduct(laneDirection, vehicleDirection);
+            
+            var minAngleCos = 0.0;
+            
+            if (angleCos < minAngleCos) TurnPlayerVehicleRed(gameState.playerVehicle, 0.2);
+        }
+        else if (onElemAfter.type == MapElemIntersection) {
+            var intersection = onElemAfter.intersection;
+            
+            if (onElemBefore.type == MapElemRoad) {
+                var road = onElemBefore.road;
+                var trafficLight = TrafficLightOfRoad(intersection, road);
+                
+                if (trafficLight != null && trafficLight.color == TrafficLight_Red) {
+                    TurnPlayerVehicleRed(gameState.playerVehicle, 0.5);
+                }
+            }
+        }
     }
-    
+    else {
+        UpdatePlayerHuman(gameState.playerHuman, seconds);
+    }
+
     var camera = gameState.renderer.camera;
     camera.center = gameState.playerHuman.human.position;
     
-    if (gameState.playerHuman.human.inBuilding != null) {
-        camera.zoomTargetRatio = 20.0;
+    if (gameState.isPlayerVehicle) {
+        CopyPoint(camera.center, gameState.playerVehicle.vehicle.position);
+        
+        var speed = VectorLength(gameState.playerVehicle.velocity);
+        
+        camera.zoomTargetRatio = 13.0 - (speed / 4.0);
     }
     else {
-        camera.zoomTargetRatio = 10.0;
+        CopyPoint(camera.center, gameState.playerHuman.human.position);
+        
+        if (gameState.playerHuman.human.inBuilding) {
+            camera.zoomTargetRatio = 20.0;
+        }
+        else {
+            camera.zoomTargetRatio = 10.0;
+        }
     }
     
     UpdateCamera(camera, seconds);
@@ -107,28 +171,12 @@ function GameDraw(gameState) {
     else {    
         DrawMap(renderer, gameState.map);
         
-        if (gameState.selectedBuilding) {
-            var highlightColor = Color3(0.0, 1.0, 1.0);
-            HighlightBuilding(renderer, gameState.selectedBuilding, highlightColor);
-        }
-
-        if (gameState.highlightedBuilding) {
-            var highlightColor = Color3(0.0, 1.0, 1.0);
-            HighlightBuilding(renderer, gameState.highlightedBuilding, highlightColor);
-        }
-        
-        if ((gameState.buildingPath.nodeCount > 0) && (gameState.selectedBuilding != null) && (gameState.highlightedBuilding != null)
-            && (gameState.selectedBuilding != gameState.highlightedBuilding)
-        ) {
-            var color = Color3(0.0, 0.8, 0.8);
-            DrawBezierPath(gameState.buildingPath, gameState.renderer, color, 3.0);
-        }
-        
         for (var i = 0; i < gameState.autoVehicleCount; ++i) {
             var autoVehicle = gameState.autoVehicles[i];
             DrawVehicle(renderer, autoVehicle.vehicle);
         }
     }
-    
-    DrawHuman(gameState.renderer, gameState.playerHuman.human);
+   
+    if (gameState.isPlayerVehicle) DrawVehicle(gameState.renderer, gameState.playerVehicle.vehicle);
+    else DrawHuman(gameState.renderer, gameState.playerHuman.human);
 }

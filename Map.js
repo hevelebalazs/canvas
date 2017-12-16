@@ -154,6 +154,43 @@ function ClosestCrossedBuilding(map, pointClose, pointFar, excludedBuilding) {
     return result;
 }
 
+function MapElemAtPoint(map, point) {
+    var result = MapElem();
+    result.type = MapElemNone;
+    
+    for (var i = 0; i < map.roadCount; ++i) {
+        if (IsPointOnRoad(point, map.roads[i])) {
+            result.type = MapElemRoad;
+            result.road = map.roads[i];
+            return result;
+        }
+    }
+    
+    for (var i = 0; i < map.buildingCount; ++i) {
+        if (IsPointInBuilding(point, map.buildings[i])) {
+            result.type = MapElemBuilding;
+            result.building = map.buildings[i];
+            return result;
+        }
+        
+        if (IsPointOnBuildingConnector(point, map.buildings[i])) {
+            result.type = MapElemBuildingConnector;
+            result.building = map.buildings[i];
+            return result;
+        }
+    }
+    
+    for (var i = 0; i < map.roadCount; ++i) {
+        if (IsPointOnIntersection(point, map.intersections[i])) {
+            result.type = MapElemIntersection;
+            result.intersection = map.intersections[i];
+            return result;
+        }
+    }
+    
+    return result;
+}
+
 function DrawMap(renderer, map) {
     var color = Color3(0.0, 1.0, 0.0);
     DrawRect(renderer, 0, 0, map.height, map.width, color);

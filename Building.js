@@ -21,16 +21,6 @@ var CrossNone     = 0;
 var CrossWall     = 1;
 var CrossEntrance = 2;
 
-function Min2(x, y) {
-    if (x < y) return x;
-    else return y;
-}
-
-function Max2(x, y) {
-    if (x > y) return x;
-    else return y;
-}
-
 function BuildingCrossInfo() {
     return {
         building: null,
@@ -801,6 +791,36 @@ function ExtBuildingInsideClosestCrossInfo(building, radius, closePoint, farPoin
     return result;
 }
 
+function IsPointOnBuildingConnector(point, building) {
+    var roadWidth = buildingConnectRoadWidth;
+    
+    if (building.roadAround) {
+        var left   = building.left   - roadWidth;
+        var right  = building.right  + roadWidth;
+        var top    = building.top    - roadWidth;
+        var bottom = building.bottom + roadWidth;
+        
+        if (IsPointInRect(point, left, right, top, bottom)) return true;
+    }
+    
+    var left   = Min2(building.connectPointFarShow.x, building.connectPointClose.x);
+    var right  = Max2(building.connectPointFarShow.x, building.connectPointClose.x);
+    var top    = Min2(building.connectPointFarShow.y, building.connectPointClose.y);
+    var bottom = Max2(building.connectPointFarShow.y, building.connectPointClose.y);
+    
+    if (left == right) {
+        left  -= roadWidth * 0.5;
+        right += roadWidth * 0.5;
+    }
+    if (top == bottom) {
+        top    -= roadWidth * 0.5;
+        bottom += roadWidth * 0.5;
+    }
+    
+    if (IsPointInRect(point, left, right, top, bottom)) return true;
+    else return false;
+}
+
 function HighlightBuilding(renderer, building, color) {
     DrawRect(
         renderer,
@@ -888,6 +908,23 @@ function DrawBuildingInside(renderer, building) {
     }
 }
 
+function HighlightBuildingConnector(renderer, building, color) {
+    var roadWidth = buildingConnectRoadWidth;
+    
+    if (building.roadAroud) {
+        DrawRect(
+            renderer,
+            building.top - roadWidth, building.left - roadWidth,
+            building.bottom + roadWidth, building.right + roadWidth,
+            color
+        );
+        
+        DrawBuilding(renderer, building);
+    }
+    
+    DrawLine(renderer, building.connectPointClose, building.connectPointFarShow, color, roadWidth);
+}
+
 function DrawConnectRoad(renderer, building) {
     var roadColor = Color3(0.5, 0.5, 0.5);
     
@@ -902,5 +939,5 @@ function DrawConnectRoad(renderer, building) {
         );
     }
     
-    DrawLine(renderer, building.connectPointClose, building.connectPointFarShow, roadColor, buildingConnectRoadWidth);
+    DrawLine(renderer, building.connectPointClose, building.connectPointFarShow, roadColor, roadWidth);
 }

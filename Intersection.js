@@ -52,6 +52,27 @@ function CopyIntersection(to, from) {
     CopyTrafficLight(to.bottomTrafficLight, from.bottomTrafficLight);
 }
 
+function TrafficLightOfRoad(intersection, road) {
+    if (intersection.leftRoad == road)        return intersection.leftTrafficLight;
+    else if (intersection.rightRoad == road)  return intersection.rightTrafficLight;
+    else if (intersection.topRoad == road)    return intersection.topTrafficLight;
+    else if (intersection.bottomRoad == road) return intersection.bottomTrafficLight;
+    else return null;
+}
+
+function IsPointOnIntersection(point, intersection) {
+    var roadWidth = GetIntersectionRoadWidth(intersection);
+    var left   = intersection.coordinate.x - (roadWidth * 0.5);
+    var right  = intersection.coordinate.x + (roadWidth * 0.5);
+    var top    = intersection.coordinate.y - (roadWidth * 0.5);
+    var bottom = intersection.coordinate.y + (roadWidth * 0.5);
+    
+    if (point.x < left || point.x > right) return false;
+    if (point.y < top || point.y > bottom) return false;
+    
+    return true;
+}
+
 function StartTrafficLight(trafficLight) {
     trafficLight.color = TrafficLight_Green;
     trafficLight.timeLeft = TrafficLightSwitchTime;
@@ -228,7 +249,7 @@ function HighlightIntersection(renderer, intersection, color) {
     if (intersection.leftRoad || intersection.rightRoad || intersection.topRoad || intersection.bottomRoad) {
         var roadWidth = GetIntersectionRoadWidth(intersection);
         
-        var coordinate = intersectino.coordinate;
+        var coordinate = intersection.coordinate;
         
         var left   = coordinate.x - (roadWidth * 0.5);
         var right  = coordinate.x + (roadWidth * 0.5);
@@ -270,7 +291,7 @@ function DrawIntersection(renderer, intersection) {
             DrawRect(renderer, top, left, top + stripeWidth, right, stripeColor);
         }
         if (intersection.leftRoad) {
-            DrawRect(renderer, top, left, bottom, left + stripeWidth, right, stripeColor);
+            DrawRect(renderer, top, left, bottom, left + stripeWidth, stripeColor);
         }
         if (intersection.bottomRoad) {
             DrawRect(renderer, bottom - stripeWidth, left, bottom, right, stripeColor);
